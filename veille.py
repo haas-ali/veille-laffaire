@@ -1,4 +1,4 @@
-﻿"""Veille d'actualité @laffaire_france — un tour complet (lancé toutes les 10 min par GitHub Actions).
+"""Veille d'actualité @laffaire_france — un tour complet (lancé toutes les 10 min par GitHub Actions).
 
 1. lit les clics Telegram (PRÉPARER / APPROFONDIR / IGNORER) ;
 2. lit les flux RSS, regroupe les articles par événement, note chaque événement ;
@@ -60,9 +60,60 @@ def nettoyer(html_txt):
 
 # ---------- 1. Collecte ----------
 
+def article(nom, titre, lien, ts, pays, typ, resume=""):
+    return {"id": hashlib.sha1((lien + titre).encode()).hexdigest()[:12], "titre": titre[:200], "source": nom, "lien": lien,
+            "ts": ts, "pays": pays, "type": typ, "resume": resume[:600],
+            "date": datetime.fromtimestamp(ts, PARIS).strftime("%d/%m %H:%M")}
+
+
+def iso(s):
+    return datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
+
+
+def lire_bluesky(nom, handle, pays, typ):
+    r = requests.get("https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed", timeout=20,
+                     params={"actor": handle, "limit": 30, "filter": "posts_no_replies"})
+    r.raise_for_status()
+    res = []
+    for it in r.json()["feed"]:
+        p = it["post"]
+        if it.get("reason"):  # repost
+            continue
+        ext = (p["record"].get("embed") or {}).get("external") or {}
+        texte = re.sub(r"https?://\S+|▶️|🔴", " ", p["record"].get("text", "")).strip()
+        titre = ext.get("title") or texte
+        if "ALERTE" in p["record"].get("text", "") and ext.get("title"):
+            titre = "ALERTE : " + ext["title"]
+        lien = ext.get("uri") or f"https://bsky.app/profile/{handle}/post/{p['uri'].split('/')[-1]}"
+        if titre:
+            res.append(article(nom, nettoyer(titre), lien, iso(p["record"]["createdAt"]), pays, typ, texte + " " + ext.get("description", "")))
+    return res
+
+
+def lire_telegram(nom, canal, pays, typ):
+    import html as h
+    r = requests.get("https://t.me/s/" + canal, headers=UA, timeout=20)
+    r.raise_for_status()
+    res = []
+    for bloc in r.text.split('class="tgme_widget_message_wrap')[1:]:
+        post = re.search(r'data-post="([^"]+)"', bloc)
+        t = re.search(r'<time datetime="([^"]+)"', bloc)
+        txt = re.search(r'class="tgme_widget_message_text[^"]*"[^>]*>(.*?)</div>', bloc, re.S)
+        if not (post and t and txt):
+            continue
+        texte = h.unescape(nettoyer(txt.group(1).replace("<br/>", " ")))
+        titre = re.split(r"(?<=[.!?])\s", texte, 1)[0]
+        res.append(article(nom, titre, "https://t.me/" + post.group(1), iso(t.group(1)), pays, typ, texte))
+    return res
+
+
 def lire_flux(f):
     nom, url, pays, typ = f
     try:
+        if url.startswith("bsky:"):
+            return lire_bluesky(nom, url[5:], pays, typ)
+        if url.startswith("tg:"):
+            return lire_telegram(nom, url[3:], pays, typ)
         r = requests.get(url, headers=UA, timeout=20)
         r.raise_for_status()
         d = feedparser.parse(r.content)
@@ -166,6 +217,11 @@ def regrouper(etat, nouveaux):
     return {e for e in touches if e in evs}
 
 
+def media(source):
+    """« BFMTV (Bluesky) » et « BFMTV police-justice » = un seul média."""
+    return re.sub(r" \(.*|^YouTube | (police-justice|faits divers|France|flash actu)$", "", source).replace("BFM", "BFMTV").replace("BFMTVTV", "BFMTV")
+
+
 def noter(ev):
     texte = " " + sans_accent(" ".join(a["titre"] + " " + a["resume"][:200] for a in ev["articles"][:8])) + " "
     s = 0.0
@@ -174,7 +230,7 @@ def noter(ev):
             if re.search(r"(?<![a-z])" + re.escape(m) + r"(?![a-z])", texte):
                 s += pts
     s = min(s, 12)
-    nb_sources = len({a["source"] for a in ev["articles"]})
+    nb_sources = len({media(a["source"]) for a in ev["articles"]})
     s += min(6, 1.5 * (nb_sources - 1))
     if any(a["type"] == "video" for a in ev["articles"]):
         s += 1
@@ -187,7 +243,7 @@ def noter(ev):
 
 # ---------- 3. Alertes ----------
 
-CONNUS = {f[0] for f in config.FLUX} | {"BFM", "BFMTV", "Le Monde", "Le Figaro", "Le Parisien", "franceinfo", "20 Minutes",
+CONNUS = {f[0] for f in config.FLUX if "non vérifié" not in f[0]} | {"BFM", "BFMTV", "Le Monde", "Le Figaro", "Le Parisien", "franceinfo", "20 Minutes",
                                       "Ouest-France", "Libération", "France 24", "Euronews", "Sud Ouest", "Le Point", "L'Express",
                                       "TF1 Info", "LCI", "CNEWS", "RTL", "Europe 1", "RMC", "Nice-Matin", "Var-Matin", "Le Progrès",
                                       "La Voix du Nord", "Actu.fr", "actu.fr", "AFP", "Reuters", "Le JDD", "Mediapart", "Marianne"}

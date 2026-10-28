@@ -31,6 +31,31 @@ FLUX = [
     ("YouTube Le Figaro", "https://www.youtube.com/feeds/videos.xml?channel_id=UCCDz_XYeKWd0OIyjp95dqyQ", "FR", "video"),
     ("YouTube CNEWS", "https://www.youtube.com/feeds/videos.xml?channel_id=UCciBAhIME9MQEmGbBPnh44g", "FR", "video"),
     ("YouTube Euronews", "https://www.youtube.com/feeds/videos.xml?channel_id=UCW2QcKZiU8aUGg4yxCIditg", "EU", "video"),
+    # Flux « en continu » / rubriques rapides (testés le 28/10/2026)
+    ("Le Monde (en continu)", "https://www.lemonde.fr/rss/en_continu.xml", "FR", "article"),
+    ("Le Figaro (flash actu)", "https://www.lefigaro.fr/rss/figaro_flash-actu.xml", "FR", "article"),
+    ("franceinfo France", "https://www.francetvinfo.fr/france.rss", "FR", "article"),
+    ("BFMTV police-justice", "https://www.bfmtv.com/rss/police-justice/", "FR", "article"),
+    ("Le Parisien faits divers", "https://www.leparisien.fr/faits-divers/rss.xml", "FR", "article"),
+    ("Libération police-justice", "https://www.liberation.fr/arc/outboundfeeds/rss-all/category/societe/police-justice/?outputType=xml", "FR", "article"),
+    ("CNEWS", "https://www.cnews.fr/rss.xml", "FR", "article"),
+    ("Europe 1", "https://www.europe1.fr/rss.xml", "FR", "article"),
+    ("Sud Ouest", "https://www.sudouest.fr/rss.xml", "FR", "article"),
+    ("Ouest-France France", "https://www.ouest-france.fr/rss/france", "FR", "article"),
+    # Bluesky : comptes officiels (handle = nom de domaine du média, donc vérifié), lus sans clé
+    ("AFP (Bluesky)", "bsky:afp.com", "FR", "article"),
+    ("franceinfo (Bluesky)", "bsky:franceinfo.fr", "FR", "article"),
+    ("BFMTV (Bluesky)", "bsky:bfmtv.com", "FR", "article"),
+    ("Le Monde (Bluesky)", "bsky:lemonde.fr", "FR", "article"),
+    ("Le Parisien (Bluesky)", "bsky:leparisien.fr", "FR", "article"),
+    ("Le Figaro (Bluesky)", "bsky:lefigaro.fr", "FR", "article"),
+    ("Libération (Bluesky)", "bsky:liberation.fr", "FR", "article"),
+    ("Le Point (Bluesky)", "bsky:lepoint.fr", "FR", "article"),
+    ("France 24 (Bluesky)", "bsky:france24.com", "EU", "article"),
+    # Chaînes Telegram publiques (page t.me/s, sans clé)
+    ("Actu17 (Telegram)", "tg:actu17", "FR", "article"),
+    # Agrégateur non officiel : sert seulement de signal rapide, jamais de source seule (absent de la liste des médias connus)
+    ("Infos Françaises (Telegram, non vérifié)", "tg:infosfrancaises", "FR", "article"),
 ]
 
 # Mots-clés (sans accents, en minuscules) -> points. Sert à trier avant l'IA.
