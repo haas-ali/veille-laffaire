@@ -4,6 +4,7 @@ import requests
 
 CLE = os.environ.get("GEMINI_API_KEY", "").strip()
 MODELES = [m for m in [os.environ.get("GEMINI_MODELE", "").strip(), "gemini-3.5-flash", "gemini-3.8-flash", "gemini-flash-lite-latest"] if m]
+RAPIDES = ["gemini-flash-lite-latest", "gemini-3.5-flash"]  # analyses courantes : rapide, quota gratuit plus large
 URL = "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent"
 
 
@@ -27,7 +28,7 @@ def _json(txt):
     return res if isinstance(res, dict) else None
 
 
-def appeler(prompt, recherche_web=False):
+def appeler(prompt, recherche_web=False, modeles=None):
     """Renvoie (objet JSON, liste des sources web [(titre, url)]) ou (None, []) sans clé."""
     if not CLE:
         return None, []
@@ -37,7 +38,7 @@ def appeler(prompt, recherche_web=False):
     else:
         corps["generationConfig"]["responseMimeType"] = "application/json"
     quota = 0
-    for modele in MODELES * 2:  # 2 passages : un modèle saturé peut se libérer
+    for modele in (modeles or MODELES) * 2:  # 2 passages : un modèle saturé peut se libérer
         if True:
             try:
                 r = requests.post(URL.format(modele), json=corps, headers={"x-goog-api-key": CLE}, timeout=90)
@@ -94,7 +95,7 @@ Réponds avec ce JSON :
 "faits_confirmes": ["..."], "incertain": ["..."], "score_tiktok": 0-10, "raison_score": "1 phrase",
 "angle": "angle de vidéo pour L'Affaire en 1-2 phrases", "accroche": "1re phrase de la voix off", "recherche_video": ["2 ou 3 requêtes pour trouver la vidéo originale sur TikTok/X/YouTube"]}}
 Barème score_tiktok : 9-10 = choc national avec vidéo virale ; 7-8 = fort potentiel en France ; 5-6 = intéressant ; 0-4 = peu adapté (économie, sport ordinaire, international lointain)."""
-    res, _ = appeler(prompt)
+    res, _ = appeler(prompt, modeles=RAPIDES)
     return res
 
 
