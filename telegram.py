@@ -56,9 +56,10 @@ def texte_alerte(ev):
         if x["source"] not in vus and len(lignes) < 6:
             vus.add(x["source"]); lignes.append(f'• <a href="{e(x["lien"])}">{e(x["source"])}</a>')
     t.append(f"\n📰 <b>Sources ({len({x['source'] for x in srcs})})</b>\n" + "\n".join(lignes))
-    vids = [x for x in ev["articles"] if x["type"] == "video"][:4]
+    vids = [(x["source"], x["titre"], x["lien"]) for x in ev["articles"] if x["type"] == "video"][:3]
+    vids += [("YouTube · " + v["chaine"], v["titre"], v["lien"]) for v in ev.get("videos_yt") or [] if v["lien"] not in {l for _, _, l in vids}][:4]
     if vids:
-        t.append("🎥 <b>Vidéos trouvées</b>\n" + "\n".join(f'• <a href="{e(x["lien"])}">{e(x["source"])} : {e(x["titre"][:60])}</a>' for x in vids))
+        t.append("🎥 <b>Vidéos trouvées</b>\n" + "\n".join(f'• <a href="{e(l)}">{e(s)} : {e(ti[:60])}</a>' for s, ti, l in vids))
     t.append("🔍 Chercher la vidéo : " + liens_recherche(a.get("recherche_video") or [a.get("titre") or ev["articles"][0]["titre"]]))
     return assembler(t)
 

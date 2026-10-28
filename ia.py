@@ -59,7 +59,7 @@ Règles absolues :
 - Si une information manque, écris null. Réponds en français."""
 
 
-def analyser(evenement, deja=()):
+def analyser(evenement, deja=(), gouts=""):
     """Analyse un événement regroupé. deja = titres des alertes déjà envoyées (anti-doublon). Renvoie un dict ou None."""
     arts = sorted(evenement["articles"], key=lambda a: a["ts"])
     arts = arts[:4] + arts[4:][-11:]  # le début de l'histoire + les derniers rebondissements
@@ -73,6 +73,8 @@ Les vidéos qui marchent : « Terrible drame, … » / « On vient de l'apprendr
 Voici les articles qui parlent du même événement, du plus ancien au plus récent (première info : {premier}) :
 {lignes}
 Si la première info date de plus de 12 h, ne note haut que s'il y a un VRAI nouveau rebondissement dans les articles récents ; sinon score_tiktok ≤ 4.
+
+Goûts du créateur appris de ses clics (ajuste la note d'environ ±1 selon les catégories qu'il prépare ou ignore) : {gouts or 'pas encore de données'}
 
 Alertes déjà envoyées ces dernières 24 h :
 {deja_txt}

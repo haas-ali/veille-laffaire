@@ -102,7 +102,7 @@ def lire_telegram(nom, canal, pays, typ):
         if not (post and t and txt):
             continue
         texte = h.unescape(nettoyer(txt.group(1).replace("<br/>", " ")))
-        titre = re.split(r"(?<=[.!?])\s", texte, 1)[0]
+        titre = texte[:160] if len(re.split(r"(?<=[.!?])\s", texte, 1)[0]) < 50 else re.split(r"(?<=[.!?])\s", texte, 1)[0]
         res.append(article(nom, titre, "https://t.me/" + post.group(1), iso(t.group(1)), pays, typ, texte))
     return res
 
@@ -219,7 +219,13 @@ def regrouper(etat, nouveaux):
 
 def media(source):
     """« BFMTV (Bluesky) » et « BFMTV police-justice » = un seul média."""
-    return re.sub(r" \(.*|^YouTube | (police-justice|faits divers|France|flash actu)$", "", source).replace("BFM", "BFMTV").replace("BFMTVTV", "BFMTV")
+    s = re.sub(r" \(.*|^YouTube | (police-justice|faits divers|France|flash actu|93)$", "", source).replace("BFM", "BFMTV").replace("BFMTVTV", "BFMTV")
+    # même rédaction (groupe EBRA, groupe Dépêche) = une seule source
+    if s in ("Le Progrès", "Le Dauphiné", "L'Est Républicain", "DNA", "Le Républicain lorrain", "Vosges Matin", "Le Bien Public", "Le JSL"):
+        return "EBRA"
+    if s in ("La Dépêche", "Midi Libre", "L'Indépendant", "Centre Presse"):
+        return "La Dépêche"
+    return s
 
 
 def noter(ev):
@@ -260,11 +266,45 @@ def doit_analyser(ev):
 
 
 def alerter(ev):
+    try:
+        ev["videos_yt"] = recherche_youtube(ev)[:4]  # vraies vidéos YouTube récentes sur le sujet (clé gratuite)
+    except Exception as ex:
+        print("  ! YouTube :", ex)
     msg = tg.texte_alerte(ev)
     if ESSAI:
         print("\n" + "=" * 70 + "\n" + re.sub(r"<[^>]+>", "", msg))
         return
     ev["message_id"] = tg.envoyer(msg, ev["id"])
+
+
+def gouts(etat):
+    """Ce que l'utilisateur prépare ou ignore, par catégorie (appris de ses clics)."""
+    p = etat.get("gouts", {})
+    return "; ".join(f"{c} : {v.get('prep', 0)} préparé(s), {v.get('ign', 0)} ignoré(s)" for c, v in p.items()) or ""
+
+
+def noter_clic(etat, ev, action):
+    cat = (ev.get("analyse") or {}).get("categorie") or "autre"
+    g = etat.setdefault("gouts", {}).setdefault(cat, {})
+    g[action] = g.get(action, 0) + 1
+
+
+def resume_du_matin(etat):
+    """Vers 8 h (heure de Paris), un message avec les 5 sujets les plus forts des 12 dernières heures."""
+    now = datetime.now(PARIS)
+    if now.hour != 8 or etat.get("resume_jour") == now.strftime("%Y-%m-%d"):
+        return
+    depuis = maintenant() - 12 * 3600
+    evs = [ev for ev in etat["evenements"].values() if ev.get("maj", 0) >= depuis and ev["statut"] != "ignore"]
+    evs.sort(key=lambda ev: (-((ev.get("analyse") or {}).get("score_tiktok") or 0), -ev.get("score", 0)))
+    lignes = [f"☀️ <b>Les sujets forts de la nuit</b> ({now.strftime('%d/%m')})"]
+    for ev in evs[:5]:
+        a = ev.get("analyse") or {}
+        note = f"{a['score_tiktok']}/10" if a.get("score_tiktok") is not None else "—"
+        lignes.append(f"\n• <b>{tg.e(a.get('titre') or ev['articles'][0]['titre'])}</b> — {note}, {ev['nb_sources']} sources")
+    if len(lignes) > 1 and not ESSAI:
+        tg.envoyer(tg.assembler(lignes))
+    etat["resume_jour"] = now.strftime("%Y-%m-%d")
 
 
 def traiter_alertes(etat, touches, premier_tour):
@@ -278,7 +318,8 @@ def traiter_alertes(etat, touches, premier_tour):
         if ia.CLE and analyses < config.MAX_ANALYSES_PAR_TOUR:
             deja = [x for x in etat["evenements"].values() if x["notifie"] and x.get("maj", 0) >= limite and x is not ev]
             try:
-                ev["analyse"] = ia.analyser(ev, [(x.get("analyse") or {}).get("titre") or x["articles"][0]["titre"] for x in deja]) or ev.get("analyse")
+                ev["analyse"] = ia.analyser(ev, [(x.get("analyse") or {}).get("titre") or x["articles"][0]["titre"] for x in deja],
+                                            gouts(etat)) or ev.get("analyse")
             except ia.QuotaEpuise:
                 print("  ! quota IA atteint, on reprendra au prochain tour")
                 break
@@ -336,6 +377,14 @@ def approfondir(ev):
             plus["ia"], plus["sources_web"] = ia.approfondir(ev)
         except Exception as ex:
             print("  ! IA approfondir :", ex)
+        if not plus["ia"] and plus["articles"]:
+            # recherche Google de l'IA indisponible (quota) : l'IA relit tous les articles, anciens + nouveaux trouvés
+            try:
+                a = ia.analyser({"articles": ev["articles"] + plus["articles"]}) or {}
+                plus["ia"] = {"nouveaux_elements": [a["nouveau"]] if a.get("nouveau") else [], "faits_confirmes": a.get("faits_confirmes"),
+                              "incertain": a.get("incertain"), "score_tiktok": a.get("score_tiktok"), "angle": a.get("angle")}
+            except Exception as ex:
+                print("  ! IA approfondir (articles) :", ex)
     ev["approfondi"] = plus
     return plus
 
@@ -436,7 +485,7 @@ def traiter_clics(etat):
             tg.repondre_clic(id_clic, "Événement expiré (plus de 3 jours).")
             continue
         if action == "ign":
-            ev["statut"] = "ignore"
+            ev["statut"] = "ignore"; noter_clic(etat, ev, "ign")
             tg.repondre_clic(id_clic, "Ignoré"); tg.marquer(mid, "✖️ Ignoré")
         elif action == "plus":
             tg.repondre_clic(id_clic, "Recherche en cours…")
@@ -444,7 +493,7 @@ def traiter_clics(etat):
         elif action == "prep":
             tg.repondre_clic(id_clic, "Préparation du dossier…")
             dos = preparer(ev)
-            ev["statut"], ev["dossier"] = "prepare", dos.name
+            ev["statut"], ev["dossier"] = "prepare", dos.name; noter_clic(etat, ev, "prep")
             tg.marquer(mid, "🎬 Dossier préparé")
             tg.envoyer_fichier(dos / "dossier.md", f"🎬 Dossier prêt : {dos.name}\n\nSur ton PC, dis à Claude Code :\n« prépare le sujet {dos.name} »\n(rien n'est publié sans toi)")
 
@@ -464,6 +513,7 @@ def main():
     for eid in touches:
         noter(etat["evenements"][eid])
     traiter_alertes(etat, touches, premier_tour)
+    resume_du_matin(etat)
     # ménage : on oublie ce qui est trop vieux
     limite = maintenant() - config.GARDER_HEURES * 3600
     etat["evenements"] = {k: v for k, v in etat["evenements"].items() if v.get("maj", v["cree"]) >= limite or v["statut"] == "prepare" and v["cree"] >= limite - 4 * 86400}
