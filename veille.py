@@ -138,7 +138,7 @@ def lire_flux(f):
 
 
 def collecter():
-    with ThreadPoolExecutor(8) as p:
+    with ThreadPoolExecutor(16) as p:
         tout = [a for lot in p.map(lire_flux, config.FLUX) for a in lot]
     limite = maintenant() - config.AGE_MAX_HEURES * 3600
     return [a for a in tout if a["ts"] >= limite]

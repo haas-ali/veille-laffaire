@@ -79,6 +79,6 @@ MOTS = {
 SEUIL_ANALYSE = 5.0      # score mots-clés à partir duquel on demande l'avis de l'IA
 SEUIL_NOTIF_IA = 6       # note TikTok (sur 10) minimale pour envoyer une alerte
 SEUIL_NOTIF_SANS_IA = 9  # si pas de clé IA : score mots-clés minimal pour alerter
-MAX_ANALYSES_PAR_TOUR = 6  # protège le quota gratuit de l'IA
+MAX_ANALYSES_PAR_TOUR = 4  # protège le quota gratuit de l'IA
 AGE_MAX_HEURES = 36      # on ignore les articles plus vieux
 GARDER_HEURES = 72       # durée de vie d'un événement en mémoire
