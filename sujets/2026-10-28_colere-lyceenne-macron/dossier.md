@@ -1,0 +1,98 @@
+# Rentrée lycéenne sous tension
+
+Préparé le 2026-10-29T00:41+01:00 par la veille automatique. **À vérifier avant montage : rien n'est publié automatiquement.**
+
+## Ce qui se passe
+Face à la colère lycéenne et étudiante, Emmanuel Macron a appelé dans un entretien à HugoDécrypte à la reprise des cours 'dans le calme' dès lundi prochain après les vacances de la Toussaint. Le chef de l'État estime que la jeunesse a été 'entendue' malgré le maintien de la mobilisation par l'intersyndicale. Cette annonce intervient alors que le Sénat a adopté cette nuit le projet de loi 'casseurs-payeurs'.
+
+- Lieu : Paris, France
+- Heure : 28/10/2026 23:34
+- Potentiel TikTok : 6/10 — Sujet politique national important concernant la jeunesse, mais l'angle institutionnel manque du caractère 'choc' visuel d'un fait divers.
+
+### Confirmé
+- Emmanuel Macron a accordé un entretien à HugoDécrypte diffusé le 28 octobre.
+- Le président de la République a appelé à la reprise des cours dans les lycées dès lundi après les vacances de la Toussaint.
+- Le Sénat a adopté le projet de loi 'casseurs-payeurs' cette nuit.
+
+### Incertain
+- L'impact réel de cet appel sur la poursuite de la mobilisation de l'intersyndicale en fin de semaine.
+
+## Recherche approfondie
+- Emmanuel Macron a appelé à la reprise des cours dans le calme dès lundi dans un entretien diffusé sur la chaîne YouTube d'HugoDécrypte, tandis que l'intersyndicale maintient la mobilisation.
+
+## Modèle conseillé : n° 2
+
+## Titre à l'écran
+**RENTRÉE SOUS TENSION !**
+_Macron demande le calme_
+
+## Voix off (parts.json)
+1. On vient de l'apprendre, Emmanuel Macron appelle à la reprise des cours dans les lycées dès lundi prochain, le vingt-neuf octobre, après plusieurs semaines de contestation.
+2. Voici ce que l'on sait. Dans un entretien accordé au journaliste Hugo Décrypte ce mercredi vingt-huit octobre, le chef de l'État a estimé que la jeunesse avait été entendue.
+3. Cette prise de parole intervient alors que le climat social reste tendu à travers le pays. L'intersyndicale continue d'appeler à la mobilisation générale au moins jusqu'à la fin de la semaine.
+4. Parallèlement, le Sénat a adopté cette nuit le projet de loi dit casseurs-payeurs, renforçant les sanctions financières lors des manifestations et des rassemblements.
+5. Selon l'entourage présidentiel, le président souhaite désormais que les établissements puissent rouvrir dans de bonnes conditions afin de garantir l'avenir des élèves.
+6. Malgré cet appel à la réouverture des classes dans le calme, les syndicats étudiants et lycéens maintiennent pour l'instant leurs mots d'ordre de grève et de blocage pour les prochains jours.
+
+(162 mots — viser 155 à 185 pour 61 s minimum)
+
+## Plans, zooms, effets
+- Partie 1 : Extrait vidéo d'Emmanuel Macron s'exprimant face caméra — effet : zoom — texte : Appel de Macron
+- Partie 2 : Capture d'écran de la chaîne YouTube d'Hugo Décrypte — effet : arrêt sur image + flèche sur l'interview — texte : Entretien exclusif
+- Partie 3 : Images de manifestants lycéens devant un établissement scolaire — effet : zoom — texte : Mobilisation maintenue
+- Partie 4 : Plan fixe de l'hémicycle du Sénat — effet : arrêt sur image — texte : Loi adoptée
+- Partie 5 : Façade d'un lycée français avec des étudiants massés devant — effet : zoom — texte : Rentrée lundi
+- Partie 6 : Panneau de signalisation ou affichage médiatique sur la situation sociale — effet : arrêt sur image — texte : Tensions en cours
+
+## Miniature
+`"COLÈRE LYCÉENNE|MACRON PARLE|RENTRÉE LUNDI" "Ce qu'il faut retenir"`
+
+## Description TikTok
+Crise lycéenne en France : Emmanuel Macron sort du silence et fixe une date pour le retour en classe, malgré le maintien des contestations par les syndicats. Pensez-vous que les cours reprendront normalement lundi ?
+#Actualité #France #Lycéens #Macron #Politique #laffaire_france
+
+## À vérifier
+- Vérifier le maintien exact des manifestations syndicales prévues en fin de semaine.
+
+## Vidéos
+- [HugoDécrypte - Grands formats : J’ai interrogé Emmanuel Macron](https://www.youtube.com/watch?v=xRIw-ZmDzj4)
+- [TATIANA NEXT STEP : Французские школьники почти выиграли, правительство готово «похоронить» Parcoursup #франция](https://www.youtube.com/watch?v=PDqvP2nRoVs)
+
+Requêtes pour chercher la vidéo originale :
+- `Macron HugoDecrypte lycees`
+- `Colere lyceenne Macron rentree`
+
+## Sources
+- [La Dépêche](https://www.ladepeche.fr/2026/10/28/direct-colere-sociale-en-france-ce-nest-pas-au-ministre-de-le-decider-la-france-insoumise-appelle-a-poursuivre-la-mobilisation-lyceenne-13624114.php) — DIRECT. Colère sociale en France : Emmanuel Macron appelle à la reprise des cours dans le "calme" à la rentrée lundi (28/10 22:41)
+- [BFMTV](https://www.bfmtv.com/politique/elysee/colere-lyceenne-emmanuel-macron-appelle-a-la-reprise-des-cours-a-la-rentree-lundi-et-que-le-calme-revienne_AD-202610280960.html) — Colère lycéenne: Emmanuel Macron appelle à la reprise des cours à la rentrée lundi et "que le calme revienne" (28/10 22:56)
+- [franceinfo](https://www.franceinfo.fr/societe/education/blocage-des-lycees/direct-mobilisations-des-lyceens-les-deputes-seront-invites-mercredi-a-debattre-a-l-assemblee-nationale-sur-l-avenir-de-parcoursup-selon-une-source-ministerielle-a-france-televisions_8256817.html#xtor=RSS-3-[lestitres]) — Mobilisation des lycéens : Emmanuel Macron appelle à une rentrée dans "le calme" lundi (28/10 22:58)
+- [Infos Françaises (Telegram, non vérifié)](https://t.me/infosfrancaises/11686) — Macron appelle à la reprise des cours en lycée à la rentrée Le président Emmanuel Macron a déclaré ce mercredi vouloir la reprise des cours dans les lycées dès la rentrée, dans le calme, après les vac (28/10 22:58)
+- [La Dépêche](https://www.ladepeche.fr/2026/10/28/direct-colere-sociale-en-france-ce-nest-pas-au-ministre-de-le-decider-la-france-insoumise-appelle-a-poursuivre-la-mobilisation-lyceenne-13624114.php) — REPLAY. Colère sociale en France : Emmanuel Macron appelle à la reprise des cours dans le "calme" à la rentrée lundi (28/10 22:59)
+- [L'Est Républicain](https://www.estrepublicain.fr/education/2026/10/28/la-jeunesse-a-ete-entendue-estime-macron-qui-appelle-a-une-reprise-des-cours-dans-le-calme) — Social. « La jeunesse a été entendue », estime Macron qui appelle à une reprise des cours « dans le calme » (28/10 23:22)
+- [Le Républicain lorrain](https://www.republicain-lorrain.fr/education/2026/10/28/la-jeunesse-a-ete-entendue-estime-macron-qui-appelle-a-une-reprise-des-cours-dans-le-calme) — Social. « La jeunesse a été entendue », estime Macron qui appelle à une reprise des cours « dans le calme » (28/10 23:22)
+- [Vosges Matin](https://www.vosgesmatin.fr/education/2026/10/28/la-jeunesse-a-ete-entendue-estime-macron-qui-appelle-a-une-reprise-des-cours-dans-le-calme) — Social. « La jeunesse a été entendue », estime Macron qui appelle à une reprise des cours « dans le calme » (28/10 23:22)
+- [Le Bien Public](https://www.bienpublic.com/education/2026/10/28/la-jeunesse-a-ete-entendue-estime-macron-qui-appelle-a-une-reprise-des-cours-dans-le-calme) — Social. « La jeunesse a été entendue », estime Macron qui appelle à une reprise des cours « dans le calme » (28/10 23:22)
+- [Le JSL](https://www.lejsl.com/education/2026/10/28/la-jeunesse-a-ete-entendue-estime-macron-qui-appelle-a-une-reprise-des-cours-dans-le-calme) — Social. « La jeunesse a été entendue », estime Macron qui appelle à une reprise des cours « dans le calme » (28/10 23:22)
+- [BFMTV](https://www.bfmtv.com/politique/la-france-insoumise/video-colere-des-lyceens-emmanuel-macron-appelle-a-la-reprise-des-cours-dans-le-calme-a-la-rentree-lundi_VN-202610280981.html) — Colère des lycéens: Emmanuel Macron appelle à la reprise des cours dans le "calme" à la rentrée lundi (28/10 23:22)
+- [Infos Françaises (Telegram, non vérifié)](https://t.me/infosfrancaises/11688) — Macron appelle à reprendre les cours dans le calme à la rentrée Emmanuel Macron appelle à la reprise des cours dans le calme à la rentrée lundi. (28/10 23:25)
+- [Le Figaro](https://www.lefigaro.fr/actualite-france/mobilisations-lyceennes-macron-appelle-a-la-reprise-des-cours-dans-le-calme-a-la-rentree-lundi-20261028) — Mobilisations lycéennes : Macron appelle à la reprise des cours dans le «calme» à la rentrée lundi (28/10 23:34)
+- [Le Figaro (flash actu)](https://www.lefigaro.fr/actualite-france/mobilisations-lyceennes-macron-appelle-a-la-reprise-des-cours-dans-le-calme-a-la-rentree-lundi-20261028) — Mobilisations lycéennes : Macron appelle à la reprise des cours dans le «calme» à la rentrée lundi (28/10 23:34)
+- [BFMTV](https://www.bfmtv.com/politique/direct-le-senat-approuve-le-projet-de-loi-casseurs-payeurs-apres-les-debordements-du-17-octobre-le-gouvernement-reste-sous-pression-avant-la-prochaine-mobilisation-du-31-octobre_LN-202610280162.html) — DIRECT. Colère lycéenne: Emmanuel Macron appelle à la reprise des cours à la rentrée lundi et "que le calme revienne" (28/10 07:32)
+- [BFM](https://news.google.com/rss/articles/CBMizwJBVV95cUxOWVBjTEVtSnFxRDlXYWtDRm1lVk5ITDE3UnVMOHZyOTc5NDN2a2V1U05JTm8tdkRFTnpRQlRoZlZKT3RaendVRWR5LWlkY3V6QVkyV3BtT0dXZnZBNmNxN1NsV0RUVENYcGJjdjdUZTlYckVRZ05jd1YwNk1jMHFPRnp3VDlGaXdBd2FCVGp3dmV1WktkSXRuMW4xMmQ1TDViR2N0UHBzSXdNSjZpb0JhcEpvNUkzQ2ZobG5ub2xLeWViMHVkSjBPMl9jTGc5eVBQVEhlQ3B5RkdRaUJMeW9HNHJiOGk3ek5WTktGNThLQkFZWE9fVjZEUEFWTGNjWTZPTFNpbW5tdExLZm9fdlNJRXVLMEY1bGhwMTBKUGpZemFQdmx0MTdDaVdRQ0hOVTBDZUFOQUtkMVdxeG5lbzg3eVpHbmFlQmlKY2s0Rnd1WQ?oc=5) — DIRECT. Colère lycéenne: Emmanuel Macron appelle à la reprise des cours à la rentrée lundi et "que le calme revienne" (29/10 00:03)
+- [BFMTV](https://www.bfmtv.com/politique/direct-le-senat-approuve-le-projet-de-loi-casseurs-payeurs-apres-les-debordements-du-17-octobre-le-gouvernement-reste-sous-pression-avant-la-prochaine-mobilisation-du-31-octobre_LN-202610280162.html) — Colère lycéenne: Emmanuel Macron appelle à la reprise des cours à la rentrée lundi et "que le calme revienne" (28/10 07:32)
+- [BFM](https://news.google.com/rss/articles/CBMizwJBVV95cUxOWVBjTEVtSnFxRDlXYWtDRm1lVk5ITDE3UnVMOHZyOTc5NDN2a2V1U05JTm8tdkRFTnpRQlRoZlZKT3RaendVRWR5LWlkY3V6QVkyV3BtT0dXZnZBNmNxN1NsV0RUVENYcGJjdjdUZTlYckVRZ05jd1YwNk1jMHFPRnp3VDlGaXdBd2FCVGp3dmV1WktkSXRuMW4xMmQ1TDViR2N0UHBzSXdNSjZpb0JhcEpvNUkzQ2ZobG5ub2xLeWViMHVkSjBPMl9jTGc5eVBQVEhlQ3B5RkdRaUJMeW9HNHJiOGk3ek5WTktGNThLQkFZWE9fVjZEUEFWTGNjWTZPTFNpbW5tdExLZm9fdlNJRXVLMEY1bGhwMTBKUGpZemFQdmx0MTdDaVdRQ0hOVTBDZUFOQUtkMVdxeG5lbzg3eVpHbmFlQmlKY2s0Rnd1WQ?oc=5) — Colère lycéenne: Emmanuel Macron appelle à la reprise des cours à la rentrée lundi et "que le calme revienne" (29/10 00:28)
+- [Le Figaro](https://news.google.com/rss/articles/CBMi3AFBVV95cUxON1VaaUdDd2lWSVZNLTVCQlBlZldKMTFwa0JkdGxad0lIQ3RsR3g4SnZzS2NrRzc3aUtKOWptc2RhSlI0SWZqLU0yTGlMTFhaNDRUYVplRDlTb09Kd2RLdW9UUEpZY3ZvSW5aSHZ2c1FBME41Z3hZVkdDMDVuRzJ0TDFRU3dLY3BLbDlqX3kybnhQQ0wzUDlqWXozLXFqTkhxZDRsWkVRbEhLSXRoeEdjNjVmQUoxMUFBSU85bVZkUkxqcVBGM0FIdnBtalJvTmlEdTV4NDNXSDlZelA4?oc=5) — Mobilisations lycéennes : Macron appelle à la reprise des cours dans le «calme» à la rentrée lundi (28/10 23:34)
+- [lanouvellerepublique.fr](https://news.google.com/rss/articles/CBMi3gFBVV95cUxPSkVxZjBxSUVBVWc2WWJnZVNHclNOcVBadVU2VEJRUDFnTlFpX2Rjam9qa3BVM09leXQ5bFZzdWk0bXQxXzQ1QWREdEl1ekNtemx5bVgzWlJxWkFrbzVHV0twNkpvUDFzNi00MVZoTl8zLTNvMkNPQm4weVRJSTNJUHhVWEtad3M4MDRfZVhjZnJXWWJlX0xxNWtYd3BQZ2UtU0k3X2pBdXdSQ3R4RWtqX0ZWSWhYNVpraWFQV0NQOUE0X1R0aVUteWtJTFMzZDktTS1fYVpMR0lYYk1tWUE?oc=5) — Colère lycéenne : Emmanuel Macron appelle à la reprise des cours "dans le calme" à la rentrée (28/10 23:24)
+- [franceinfo](https://news.google.com/rss/articles/CBMi9AJBVV95cUxNd3VXSC12Z1lfSVh6SHNhS0hONWpaVlVsQ0Q5Rk4xQWhaYzBXbFllN1o3MmVQbm5DQ2QwNi16WGdJR2wxRXNUa3RGNEJXc0JQZ21RZTBGRlVkdnhjTzdBRGxGUXphRWdJNHpOMGx5anNLbFZZNFFERHN0MjBCRVhVSmlVZ1RCTXJYM1pBV3dNUkFBaERQSVlwOXJVZmFCdTJpMTlNdUZhWGZfbDFNaWczYVVwaG5OWEJuYUJBeG1uS1BVV1hRbUhlS1Q2aExGcUJ0cTN6QnMydHRpMmNuVUNiNmVuSFMyN3pabk9uSm5nVnRoQkwxX0R5RTd0NkVEd1FqVjUwNm1jNE52U1M4ZG9pRXhlX3RJN01nc3RYd1VBVmF6dzRDTzh2OHJmdGJMMUVRV2tzV2xSbnEzbHZuQ084V0Q3SkRYX0hqT0ZGNmZOZEZwMnQwaVp4MzdESkN4d2dvSC1mZFJTaTlMdTFkZ2ttdHlEZy0?oc=5) — Mobilisation des lycéens : Emmanuel Macron appelle à une rentrée dans "le calme" lundi (29/10 00:13)
+- [Orange Actualités](https://news.google.com/rss/articles/CBMi7AFBVV95cUxNa29UZU1nSy05ZUh4TV9SUDhTNDFaN2dlU2VSREh1azhBTjBRbmc2R0tJQVB3VzQ0ay1TSEM1c2hyX2F5SEJHaHR4Wl9xaG4yX0NHOE5WVlR4Q3NCVHNnblc4MmVKenlkamNBUkNfbnFGYmIxUXZOelBVQW0tZXNlLVMxeGxLSkt1YUVRS2lIb0k3SDNoSDlPRUVrLXhqcktMb2xDcjVSZVJvV005bjRaWDJ5ZktmN3hNQ0ZZSExuclR0b3ppdFp0a3dxbFE5Ny1XLWtJQXVVRVFDa1NnVl9xYWVOVnFJQ0Z0R2xTSA?oc=5) — Colère des lycéens: Emmanuel Macron appelle à la reprise des cours dans le "calme" à la rentrée lundi (28/10 23:22)
+- [BFM](https://news.google.com/rss/articles/CBMi-gFBVV95cUxOTWMyTVBwdllRQ1RwUm9CdFFCZjc2SWwtSW93LVdyTDNHajJ0QXlKaW5TUzI0X0ZpNTYzN0c0dnJoQkN0SnBBWkRhRmg1QWpSRlE3R0pJNmJ6YnNERUtDVjY0SnpPV2VidnVjZGpfMHJEVmlfUGgxM0dRUllYU3hKRkFGZlFVV0JyanF5ZFNpTUgyejVkZjd6cHpuN1NacHJud29ReFc2TGtnY2YwYm9veGI3aW9oOWRqV3FKTy03SEc0ZkQ0NnFheWlBS0lPZzJIdWY3R2RqYVBaaXlRQl84ck1CYjZVaHV0aVNfVGRqRTNmdTNUZkhFYWRB?oc=5) — Colère lycéenne: Emmanuel Macron appelle à la reprise des cours à la rentrée lundi et "que le calme revienne" (28/10 22:56)
+- [Le Parisien](https://news.google.com/rss/articles/CBMikwJBVV95cUxQR2IxNTFScGZWOFIwZXhpUldtYzRJUVZJUXFmM2RkcEhSLU5zVHU4UC1Dd3p1cmhVM0NDa2VCMGp3bnl5c1VpNUlFRDBTVDQ5VjUzSzJlOXJrRGdzMURIeGxWWVRKTjdNZmtJSzlkQ3QwcWgwcU0ybUtZVTFEM3liUHp0S1o0emR6ckZYaVRhUDJQWS1NVTYycURUdnY3cmNNOWhBY196R3NGQy1fSlNYZjNIUkNpOUdXNnA3RVUzcVI3UzhPcGljcnZtSUtFVEZWYUJJWlRNLU1ZTGo1cFg5V0tuSHMxSHVQYjhmRjhxSDBYeGhPX2IzWmRUN01YLXBkdWh2bkdGVll2aWlGTFVHREFyNA?oc=5) — Lycées, 17 octobre, attentat de Trappes… Ce qu’il faut retenir de l’interview d’Emmanuel Macron par Hugo Décrypte (29/10 00:23)
+- [20 Minutes](https://news.google.com/rss/articles/CBMi0AFBVV95cUxObW9md0ZOUUJjaF9EVV9idW5mNnFfWHN0UXEzOVJ2bUJ0YS1SRHNfWlk0eU9kWHRiMWpzblAtWjRvRWF3dEhvR2ttQnNYUVdidHc5OWh6bDdTWEQ2RW9hZFppbmN1VC1rYXNMSUFIaVBfaFUwSTZfaGsydDZlcDlkSDdiVElYV2FWVklVbnZPemNmM2FuRjdnd2VEVFFKQ213OFhtSE5qc201dDY1X1V5SFV4RHAxdEpyc1FWNTNHcUJscXI2bjF6bk9jbmhwTG1k?oc=5) — Macron de retour aux manettes, une bonne chose pour sortir de la crise ? (27/10 06:32)
+- [Le Parisien](https://news.google.com/rss/articles/CBMiuwJBVV95cUxPczYzSmJWdDZPQ1g4eHV4UlRWZ3NuU2FyMVREa1V0VFpDclg3azA0ekxTX1RJVFJ6eUNuRUQwVE1xU2NpeU9xSUhqd3p2cWJIWGlvSWFHLS10Tl9ZYkhpNEN6SlgwVGJaTzh2aEdlcG8yQk91ampNOGhPak91LTc4MmxHT3FnRi1mVmhtT0RqZXoxX3ZHMm1aT0R4YW5JVXpvbVl6aWJwUW1oRnBpaWFqbmRNc0NseGk0RzUyNEN0WHVpT05URnA0Sk5JSTRsVGZIRGVXLW43MUxuMVI2WDkzTld0OEhTOUNBYWtBZ1JCZWtWMnM4aWFFOXZ3VUlreEp3aDFtYk1MSE42NlVNWHRrQW1pOW9VLU9VUkNOczRiWjdYYW1kQ015R0o2NEVOY0tKQ280ZV9xS05Ua0k?oc=5) — Mobilisation du 17 octobre : l’adolescente qui a perdu l’usage de son œil gauche à Mulhouse a porté plainte, le Défenseur des droits saisi (28/10 14:09)
+- [Le Parisien](https://news.google.com/rss/articles/CBMiqAJBVV95cUxQUzcyTURTOXZ3ZmFub2lEQ2JvZVVRb1BjY1o2d1N2T1kzRDIzSEtFVzZGd0JJRlE0QXJvQmhmbm1QTjJPdFBXV3hXZWN2UDZZUFNHb0xfMmg2MWpXdWxVcUM1cE1KcTExTHh5eEh3ZWZZTmtPNndhclVZNjZ5SGhkWFNGbUUxVjZuemRiLWZHNTRGNkk2eTBIVnNxWHUyNGF0czNzQ01WWGQ4MzBOeXRFZ1pkQjVjaUg5RVp6SGtSRDV4RS0yYlJsd2RCOGFKRmJ6SjlCVTZXeUtBd05iMFgtcUxCS0EwdV81aEs1Snh5UDN6YVVQbWZ4bUFuZG1xUVk3Yk9kZEJXbjNQckhNWFc4dzhmbXVtT2hzdEJsS3dGRDZPOWZSeTVKcw?oc=5) — « Notre famille demande justice pour Pengo » : à Saint-Denis, l’appel digne de l’oncle de la victime de l’attentat raciste (28/10 20:14)
+- [Le Parisien](https://news.google.com/rss/articles/CBMi5gFBVV95cUxPaDdZWmRKb2w5Y0lHUHJxMjRLd0EtMFQ2dHQ1T2w3NXhISDJIVk1yUTA1bHdkMTVnbjZoZEppdGVaZ2NEU1pjc2x6MFNpS3V1VXdNUWROeHhoTEZkbmQ3UGNsOTctMU9ubWZ6VnhLaXRyWm5Rbm5IM01tdnhSTTQtVjFpZVVjdkhSOElnTUstNlFuQVY0OHdJOEdLUzE1T3RnSXFEUTZuLVM0RWxGaVZLVWQzek1jZDFtVU9XTUpVLTRyUUxYT2VOd1hFamxLRDZzV2RXSUd6emUtR0RJc0I3UC1LWmp2dw?oc=5) — Attentat dans les Yvelines : un hommage national sera rendu aux victimes (28/10 11:46)
+- [Le Parisien](https://news.google.com/rss/articles/CBMi-gFBVV95cUxQMkxyLTYzajMwN182TC1XVjM2NmRISmFlcjEyYURCNUZLRW44X0dFZFo3N1hpazVzZ2RaTVI4WGRJRVRIMmgwaUJYM192XzhvUkJfSV9kT0VsaGsxazFkMUdsRG9DOV9aR244VllTaEc5UEZjZm8xbXNmMnZ1TW8xREt5RVcyZVhIQkRVTjQ5cGlTX2pqdjFWTHZpcmM5bnQ4ZGJqazM1bVF5NWt0Q1B1ckdYbXV3dlBYeE9HSTJGcm9mTjVGN1lNcHdsakxFOE9Id0g5X1dvTENmNGdIN0hlZlJ1TDFxVmdwTjRwVDBONlltOUF3SGtHbnpn?oc=5) — Blocages des lycées : « C’est ici le cours de maths ? », à Normale sup, du soutien scolaire solidaire (28/10 10:00)
+- [Le Parisien](https://news.google.com/rss/articles/CBMijwJBVV95cUxQYzZDRWtBSWtQbDA4MHh1NVU4MU9jeG94Ukhrc1hpTDFlZ0VBb2w2QTlGQ0hSX3RWcklyOUFaOHZuSlNpejFzRTVLWEM2S0s1MEY4MG9iLVJGTElCOWVPZFotZDIxR2pWRnZuZG9vM3BZbS1XZ0d0Ym5fLUxRRjZBbTNTSUFlLWRxSUtyNVJJaUt3TVM3cGlobllsTlluMVdpTjZPUG90ME9vSlVCck95dVotU2wyY1YzTHB0bEozZVlsOVdfN1k3ekNsb0xQNmd2eFBFUElCd09ENVBkUk5UcXh3SmE4dkRsa2EySFFKRmthZ3ZYV2p0UjJ6QmpKck1zTWYyWGFtUzF6VzN0dXh3?oc=5) — Fête de la Toussaint : Laurent Nuñez demande une sécurité renforcée autour des lieux de culte chrétiens (28/10 15:52)
+- [Le Parisien](https://news.google.com/rss/articles/CBMiugJBVV95cUxQS2N3bHZhSUJqVnAtOFJIdUVFRm9zUWNZNkZDQTdUMDRHeC1LbTZNdnBxTm1YZEJDdlFINTBTcTBrYjBLQ2FUZXNxOGZCaEZCT0VmdWF6SWk3UzhSa3h0c1pWRzFCUHlaUkVLbk82Z3NCYXRYSXVCTHBNYkZjZ2NqUDQ2Tm5BQ0V2LTRSVnVFV0VxaE9TWlYxMjVQa2dyMEt1NkNVRnNhcjUxeTZjX2VWbVJxV21hbENYM2tIUmVmeXlFdE11eGJ3UGV5OVhzd1JCaGlTUExQOVUyOWM4SUpsMi1uZWtNQWwtNm53ZjBFb3ZaTnZ6Rl9FYmJSVDFHUW5GWFcyTml4ZWFoNGdQZ1VzYWFRbUFNY05XMkxEa294SzcwYUU2bFJ3cGFlZEZodkhkdnJBek5mWkY5UQ?oc=5) — Présidentielle 2027 : Gabriel Attal défend une économie « libérale » mais « planifiée » pour financer un « capitalisme de l’innovation » (28/10 14:33)
+- [Le Parisien](https://news.google.com/rss/articles/CBMigwJBVV95cUxOOVU0bF8wclFlT0JPQkNqSFowaTlyVVVvZG1NTjA0eUN6QWNMdWJWQnI5SVFTTHA0bm42bjdmcHJkZ0tzcHdlT1cybklGZV9RMFFfSDhjZWR3RnEwY1dFQVRoRGxqYmtWbGNTZ2ExMzhUUGc1YzdCWUhLWEVHN29WLU5yWXpCb0U4eEhmUDN3a1dYLU9uOHJ1MGFRMi1JNXB1SWFNM2tZYXBxUzJQbzdiTFA1NlpCcFdLUXFEYmNnRG4xUXBlYUxMSWVIQ0VIN0FrdzFzVmpHVUl4aTVpLXFrOU9GdEJsSnNCM2RmVTNsMXc3NFZSQ2lHeVBQcnF1UXFYaUxZ?oc=5) — Présidentielle 2027 : Gabriel Attal plaide pour l’organisation d’une « grande primaire des démocrates (28/10 20:54)
+- [Le Parisien](https://news.google.com/rss/articles/CBMirwJBVV95cUxOWmVkMTkxR1FQR2RIbHh3dEd3amhPQnBfTzNYVEZ3SFE3eXJuQkNxMjktQ3VtcmhsdFJVNlNMSWF1Wjg3UEJ5NmY0VlgtYzk5M1NoLUdud2JDSWVVRDNaVlMyQUI4N3pSUF84UVhrMnNsTmNMcVUwME03ajltOGxXcVdzQk1zYnhjamRYWDRiZWo4NnFtTWlQTkRMaHg2ZkVjXzJiQ1dlSWNNei0tVXFWM2RHYUhTUndFSGRTRjItVmtETmk4blJuOXRQMm1xN3ZCZDhkc0lpWV9BQS1BQ05za0ZNUGVKSG5WZGxhZGcxb2NwWHgwazEyNmRoQmlHRFJjbktPck11dWM4VnhLa2t4YUZsd3o5UXZGQWpCLU5WUnJRTTdCTHBzZE5iSUNTcGc?oc=5) — Élections en Israël : près de 85 % des suffrages dépouillés, le bloc de Benyamin Netanyahou en tête avec environ 53 sièges (28/10 15:03)

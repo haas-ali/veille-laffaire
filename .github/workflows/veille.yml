@@ -48,4 +48,4 @@ jobs:
           git add sujets 2>/dev/null || exit 0
           git diff --cached --quiet && exit 0
           git -c user.name=veille-bot -c user.email=veille-bot@users.noreply.github.com commit -m "sujet préparé"
-          git pull --rebase && git push
+          git pull --rebase --autostash && git push

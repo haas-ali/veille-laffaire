@@ -436,7 +436,15 @@ def preparer(ev):
     plan = None
     if ia.CLE:
         try:
-            plan = ia.preparer(ev, {"articles": [a["titre"] + " (" + a["source"] + ")" for a in extra["articles"]], "ia": extra.get("ia")})
+            infos = {"articles": [a["titre"] + " (" + a["source"] + ")" for a in extra["articles"]], "ia": extra.get("ia")}
+            plan = ia.preparer(ev, infos)
+            for _ in range(2):  # script trop court = vidéo de moins de 61 s : on redemande
+                nb = sum(len(x.split()) for x in (plan or {}).get("parts") or [])
+                if nb >= 160 or not plan:
+                    break
+                print(f"  script trop court ({nb} mots), on redemande")
+                infos["consigne"] = f"Ta version précédente faisait {nb} mots : TROP COURT. Écris entre 170 et 190 mots, avec plus de détails tirés des articles (sans rien inventer)."
+                plan = ia.preparer(ev, infos) or plan
         except Exception as ex:
             print("  ! IA préparer :", ex)
     plan = plan or {}
