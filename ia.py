@@ -15,10 +15,16 @@ def _json(txt):
     """Extrait le premier objet JSON d'une réponse texte."""
     txt = re.sub(r"^```(?:json)?|```$", "", txt.strip(), flags=re.M).strip()
     try:
-        return json.loads(txt)
+        res = json.loads(txt)
     except ValueError:
         m = re.search(r"\{.*\}", txt, re.S)
-        return json.loads(m.group(0)) if m else None
+        try:
+            res = json.loads(m.group(0)) if m else None
+        except ValueError:
+            return None
+    if isinstance(res, list):  # Gemini renvoie parfois [ {...} ]
+        res = next((x for x in res if isinstance(x, dict)), None)
+    return res if isinstance(res, dict) else None
 
 
 def appeler(prompt, recherche_web=False):
