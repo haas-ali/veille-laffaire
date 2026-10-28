@@ -1,0 +1,425 @@
+﻿"""Veille d'actualité @laffaire_france — un tour complet (lancé toutes les 10 min par GitHub Actions).
+
+1. lit les clics Telegram (PRÉPARER / APPROFONDIR / IGNORER) ;
+2. lit les flux RSS, regroupe les articles par événement, note chaque événement ;
+3. fait analyser les meilleurs par l'IA et envoie une alerte Telegram pour les plus forts ;
+4. enregistre l'état dans donnees/etat.json.
+
+Options : --essai (n'envoie rien, affiche les alertes), --sans-ia."""
+import calendar, hashlib, json, math, os, re, sys, time, unicodedata
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
+from urllib.parse import quote
+
+ICI = Path(__file__).parent
+for ligne in (ICI / ".env").read_text(encoding="utf-8").splitlines() if (ICI / ".env").exists() else []:
+    if "=" in ligne and not ligne.startswith("#"):
+        k, v = ligne.split("=", 1)
+        os.environ.setdefault(k.strip(), v.strip())
+
+import feedparser, requests
+import config, ia, telegram as tg
+
+ESSAI = "--essai" in sys.argv
+if "--sans-ia" in sys.argv:
+    ia.CLE = ""
+ETAT = ICI / "donnees" / "etat.json"
+SUJETS = ICI / "sujets"
+UA = {"User-Agent": "Mozilla/5.0 (veille laffaire_france; RSS)"}
+PARIS = timezone(timedelta(hours=1))  # heure d'hiver ; l'affichage n'a pas besoin de plus de précision
+VIDES = set("""les des une est son ses sur aux par pour dans avec qui que quoi dont mais plus moins tres tout tous toute
+toutes cette ces cet elle ils elles leur leurs etre avoir ete fait faire apres avant entre selon contre sans sous vers
+chez comme quand alors deja encore aussi depuis pendant lors notre nos vos votre direct video videos photos infos info
+quel quelle quels quelles comment pourquoi voici france francais francaise annee jour jours mardi mercredi jeudi
+vendredi samedi dimanche lundi hier soir matin ans""".split())
+
+
+def maintenant():
+    return time.time()
+
+
+def sans_accent(s):
+    return "".join(c for c in unicodedata.normalize("NFD", s.lower()) if unicodedata.category(c) != "Mn")
+
+
+SYNONYMES = {"ferroviaire": "train", "trains": "train", "collision": "accident", "deraillement": "accident",
+             "morts": "mort", "tue": "mort", "tues": "mort", "tuee": "mort", "deces": "mort", "decede": "mort", "mortel": "mort",
+             "mortelle": "mort", "feu": "incendie", "blesses": "blesse", "policiers": "police", "policier": "police"}
+
+
+def mots(titre):
+    m = re.findall(r"[a-z0-9]+", sans_accent(titre).replace("'", " "))
+    m = [SYNONYMES.get(w, w) for w in m if len(w) >= 3 and w not in VIDES]
+    return {w.rstrip("sx") if len(w) > 4 else w for w in m}
+
+
+def nettoyer(html_txt):
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html_txt or "")).strip()
+
+
+# ---------- 1. Collecte ----------
+
+def lire_flux(f):
+    nom, url, pays, typ = f
+    try:
+        r = requests.get(url, headers=UA, timeout=20)
+        r.raise_for_status()
+        d = feedparser.parse(r.content)
+    except Exception as ex:
+        print(f"  ! {nom} : {ex}")
+        return []
+    res = []
+    for x in d.entries:
+        titre, source = nettoyer(x.get("title")), nom
+        if "news.google" in url and " - " in titre:  # Google Actualités : « Titre - Média »
+            titre, source = titre.rsplit(" - ", 1)
+        t = x.get("published_parsed") or x.get("updated_parsed")
+        ts = calendar.timegm(t) if t else maintenant()
+        lien = x.get("link", "")
+        if not titre or not lien:
+            continue
+        res.append({"id": hashlib.sha1((lien + titre).encode()).hexdigest()[:12], "titre": titre, "source": source,
+                    "lien": lien, "ts": ts, "pays": pays, "type": typ,
+                    "resume": nettoyer(x.get("summary"))[:600],
+                    "date": datetime.fromtimestamp(ts, PARIS).strftime("%d/%m %H:%M")})
+    return res
+
+
+def collecter():
+    with ThreadPoolExecutor(8) as p:
+        tout = [a for lot in p.map(lire_flux, config.FLUX) for a in lot]
+    limite = maintenant() - config.AGE_MAX_HEURES * 3600
+    return [a for a in tout if a["ts"] >= limite]
+
+
+# ---------- 2. Regroupement et note ----------
+
+def similarite(a, b, poids):
+    commun = a & b
+    if len(commun) < 2:
+        return 0.0
+    pa, pb = sum(poids(w) for w in a), sum(poids(w) for w in b)
+    return sum(poids(w) for w in commun) / max(1e-6, min(pa, pb))
+
+
+def signature(ev):
+    """Mots qui reviennent dans au moins un quart des titres de l'événement."""
+    compte = {}
+    for a in ev["articles"]:
+        for w in mots(a["titre"]):
+            compte[w] = compte.get(w, 0) + 1
+    seuil = max(1, len(ev["articles"]) / 4) if len(ev["articles"]) > 2 else 1
+    return {w for w, c in compte.items() if c >= seuil}
+
+
+def regrouper(etat, nouveaux):
+    evs = etat["evenements"]
+    corpus = [mots(a["titre"]) for ev in evs.values() for a in ev["articles"]] + [mots(a["titre"]) for a in nouveaux]
+    df = {}
+    for s in corpus:
+        for w in s:
+            df[w] = df.get(w, 0) + 1
+    n = len(corpus) + 1
+    poids = lambda w: math.log(n / df.get(w, 1))
+    sig = {eid: signature(ev) for eid, ev in evs.items()}
+    touches = set()
+    for a in sorted(nouveaux, key=lambda x: x["ts"]):
+        ma = mots(a["titre"])
+        meilleur, score = None, 0.0
+        for eid, mb in sig.items():
+            s = similarite(ma, mb, poids)
+            if s > score:
+                meilleur, score = eid, s
+        if score < 0.4:
+            meilleur = "e" + a["id"]
+            evs[meilleur] = {"id": meilleur, "cree": a["ts"], "articles": [], "notifie": False, "statut": "nouveau",
+                             "analyses": 0, "sources_analyse": 0}
+        ev = evs[meilleur]
+        ev["articles"].append(a)
+        ev["maj"] = max(ev.get("maj", 0), a["ts"])
+        sig[meilleur] = signature(ev)
+        touches.add(meilleur)
+    # fusion des événements qui parlent de la même chose (le plus ancien garde son identifiant)
+    ids = sorted(touches, key=lambda e: -len(evs[e]["articles"]))
+    for e1 in ids:
+        if e1 not in evs:
+            continue
+        for e2 in list(evs):
+            if e2 == e1 or e2 not in evs or e1 not in evs:
+                continue
+            if similarite(sig[e1], sig[e2], poids) >= 0.5:
+                garde, part = (e1, e2) if evs[e1]["cree"] <= evs[e2]["cree"] else (e2, e1)
+                g, p = evs[garde], evs.pop(part)
+                g["articles"] += p["articles"]
+                g["maj"] = max(g.get("maj", 0), p.get("maj", 0))
+                g["notifie"] = g["notifie"] or p["notifie"]
+                if p["statut"] != "nouveau":
+                    g["statut"] = p["statut"]
+                for k in ("analyse", "message_id", "dossier", "approfondi"):
+                    g.setdefault(k, p.get(k))
+                g["analyses"] = max(g["analyses"], p["analyses"])
+                sig[garde] = signature(g)
+                touches.discard(part); touches.add(garde)
+                if part == e1:
+                    break
+    return {e for e in touches if e in evs}
+
+
+def noter(ev):
+    texte = " " + sans_accent(" ".join(a["titre"] + " " + a["resume"][:200] for a in ev["articles"][:8])) + " "
+    s = 0.0
+    for pts, liste in config.MOTS.items():
+        for m in liste:
+            if re.search(r"(?<![a-z])" + re.escape(m) + r"(?![a-z])", texte):
+                s += pts
+    s = min(s, 12)
+    nb_sources = len({a["source"] for a in ev["articles"]})
+    s += min(6, 1.5 * (nb_sources - 1))
+    if any(a["type"] == "video" for a in ev["articles"]):
+        s += 1
+    if all(a["pays"] != "FR" for a in ev["articles"]):
+        s -= 1
+    ev["score"] = round(s, 1)
+    ev["nb_sources"] = nb_sources
+    return s
+
+
+# ---------- 3. Alertes ----------
+
+CONNUS = {f[0] for f in config.FLUX} | {"BFM", "BFMTV", "Le Monde", "Le Figaro", "Le Parisien", "franceinfo", "20 Minutes",
+                                      "Ouest-France", "Libération", "France 24", "Euronews", "Sud Ouest", "Le Point", "L'Express",
+                                      "TF1 Info", "LCI", "CNEWS", "RTL", "Europe 1", "RMC", "Nice-Matin", "Var-Matin", "Le Progrès",
+                                      "La Voix du Nord", "Actu.fr", "actu.fr", "AFP", "Reuters", "Le JDD", "Mediapart", "Marianne"}
+
+
+def doit_analyser(ev):
+    if ev["statut"] != "nouveau" or ev["notifie"] or ev["analyses"] >= 3:
+        return False
+    if ev["nb_sources"] < 2 and ev["articles"][0]["source"] not in CONNUS:
+        return False  # une seule source inconnue (site douteux remonté par Google) : on attend une confirmation
+    if ev["analyses"] == 0:
+        return ev["score"] >= config.SEUIL_ANALYSE
+    return ev["nb_sources"] >= ev["sources_analyse"] + 3  # l'événement a beaucoup grossi : on redemande
+
+
+def alerter(ev):
+    msg = tg.texte_alerte(ev)
+    if ESSAI:
+        print("\n" + "=" * 70 + "\n" + re.sub(r"<[^>]+>", "", msg))
+        return
+    ev["message_id"] = tg.envoyer(msg, ev["id"])
+
+
+def traiter_alertes(etat, touches, premier_tour):
+    candidats = sorted((etat["evenements"][e] for e in touches), key=lambda ev: -ev["score"])
+    candidats = [ev for ev in candidats if doit_analyser(ev)]
+    if premier_tour:
+        candidats = candidats[:3]  # pas d'avalanche au démarrage
+    analyses = 0
+    limite = maintenant() - 86400
+    for ev in candidats:
+        if ia.CLE and analyses < config.MAX_ANALYSES_PAR_TOUR:
+            deja = [x for x in etat["evenements"].values() if x["notifie"] and x.get("maj", 0) >= limite and x is not ev]
+            try:
+                ev["analyse"] = ia.analyser(ev, [(x.get("analyse") or {}).get("titre") or x["articles"][0]["titre"] for x in deja]) or ev.get("analyse")
+            except ia.QuotaEpuise:
+                print("  ! quota IA atteint, on reprendra au prochain tour")
+                break
+            except Exception as ex:
+                print("  ! IA :", ex)
+                continue
+            analyses += 1
+            ev["analyses"] += 1
+            ev["sources_analyse"] = ev["nb_sources"]
+            note = (ev.get("analyse") or {}).get("score_tiktok") or 0
+            d = (ev.get("analyse") or {}).get("doublon_de")
+            print(f"  IA {note}/10 {'(doublon)' if isinstance(d, int) else ''}| {ev['articles'][0]['titre'][:80]}")
+            if isinstance(d, int) and 0 <= d < len(deja):
+                ev["notifie"] = True  # même fait qu'une alerte déjà envoyée : pas de nouvelle alerte
+                ev["doublon_de"] = deja[d]["id"]
+            elif note >= config.SEUIL_NOTIF_IA:
+                alerter(ev); ev["notifie"] = True
+        elif not ia.CLE and ev["score"] >= config.SEUIL_NOTIF_SANS_IA:
+            alerter(ev); ev["notifie"] = True; ev["analyses"] = 3
+
+
+# ---------- 4. Boutons ----------
+
+def recherche_gnews(ev):
+    """Autres articles sur le même sujet via Google Actualités (sources réelles)."""
+    a = ev.get("analyse") or {}
+    cles = sorted(mots(a.get("titre") or ev["articles"][0]["titre"]), key=len, reverse=True)[:5]
+    url = f"https://news.google.com/rss/search?q={quote(' '.join(cles))}+when:3d&hl=fr&gl=FR&ceid=FR:fr"
+    return lire_flux(("Google Actualités", url, "FR", "article"))[:15]
+
+
+def recherche_youtube(ev):
+    cle = os.environ.get("YOUTUBE_API_KEY", "").strip()
+    if not cle:
+        return []
+    a = ev.get("analyse") or {}
+    q = (a.get("recherche_video") or [a.get("titre") or ev["articles"][0]["titre"]])[0]
+    depuis = datetime.fromtimestamp(maintenant() - 4 * 86400, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    r = requests.get("https://www.googleapis.com/youtube/v3/search", timeout=20, params={
+        "part": "snippet", "q": q, "type": "video", "order": "relevance", "publishedAfter": depuis, "maxResults": 8,
+        "relevanceLanguage": "fr", "key": cle})
+    if r.status_code != 200:
+        print("  ! YouTube :", r.text[:200])
+        return []
+    return [{"titre": i["snippet"]["title"], "chaine": i["snippet"]["channelTitle"],
+             "lien": "https://www.youtube.com/watch?v=" + i["id"]["videoId"]} for i in r.json().get("items", [])]
+
+
+def approfondir(ev):
+    plus = {"articles": [], "videos_youtube": recherche_youtube(ev), "ia": None, "sources_web": []}
+    deja = {a["lien"] for a in ev["articles"]}
+    plus["articles"] = [a for a in recherche_gnews(ev) if a["lien"] not in deja]
+    if ia.CLE:
+        try:
+            plus["ia"], plus["sources_web"] = ia.approfondir(ev)
+        except Exception as ex:
+            print("  ! IA approfondir :", ex)
+    ev["approfondi"] = plus
+    return plus
+
+
+def texte_approfondi(ev, p):
+    e = tg.e
+    t = ["🔎 <b>Recherche approfondie</b>"]
+    r = p.get("ia") or {}
+    for cle, titre in [("nouveaux_elements", "🆕 Nouveaux éléments"), ("officiel", "🏛️ Officiel"),
+                       ("faits_confirmes", "✅ Confirmé"), ("incertain", "❓ Incertain")]:
+        if r.get(cle):
+            t.append(f"\n<b>{titre}</b>\n" + "\n".join("• " + e(x) for x in r[cle][:5]))
+    if r.get("videos"):
+        t.append("\n<b>🎥 Vidéos signalées</b>\n" + "\n".join(
+            f"• {e(v.get('plateforme'))} {e(v.get('compte') or '')} : {e(v.get('description'))}" for v in r["videos"][:5]))
+    if p["videos_youtube"]:
+        t.append("\n<b>▶️ YouTube</b>\n" + "\n".join(f'• <a href="{e(v["lien"])}">{e(v["chaine"])} : {e(v["titre"][:60])}</a>' for v in p["videos_youtube"][:5]))
+    sources = [(a["source"], a["lien"]) for a in p["articles"][:6]] + p["sources_web"][:6]
+    if sources:
+        t.append("\n<b>📰 Sources</b>\n" + "\n".join(f'• <a href="{e(u)}">{e(n or "lien")}</a>' for n, u in sources))
+    if r.get("score_tiktok") is not None:
+        t.append(f"\nNouvelle note TikTok : <b>{r['score_tiktok']}/10</b>")
+    if len(t) == 1:
+        t.append("Rien de nouveau trouvé pour l'instant.")
+    return tg.assembler(t)
+
+
+def nom_dossier(ev, titre):
+    d = datetime.fromtimestamp(ev["cree"], PARIS).strftime("%Y-%m-%d")
+    return d + "_" + (re.sub(r"[^a-z0-9]+", "-", sans_accent(titre)).strip("-")[:50] or ev["id"])
+
+
+def preparer(ev):
+    """Crée sujets/<date>_<titre>/ avec le dossier de montage. Renvoie le chemin."""
+    extra = ev.get("approfondi") or approfondir(ev)
+    plan = None
+    if ia.CLE:
+        try:
+            plan = ia.preparer(ev, {"articles": [a["titre"] + " (" + a["source"] + ")" for a in extra["articles"]], "ia": extra.get("ia")})
+        except Exception as ex:
+            print("  ! IA préparer :", ex)
+    plan = plan or {}
+    a = ev.get("analyse") or {}
+    titre = plan.get("titre_court") or a.get("titre") or ev["articles"][0]["titre"]
+    dos = SUJETS / nom_dossier(ev, titre)
+    dos.mkdir(parents=True, exist_ok=True)
+    articles = ev["articles"] + extra["articles"]
+    videos = [x for x in articles if x["type"] == "video"] + [{"titre": v["titre"], "source": v["chaine"], "lien": v["lien"]} for v in extra["videos_youtube"]]
+    sujet = {"id": ev["id"], "titre": titre, "prepare_le": datetime.now(PARIS).isoformat(timespec="minutes"),
+             "analyse": a, "plan": plan, "approfondi": extra.get("ia"), "sources_web": extra.get("sources_web"),
+             "articles": [{k: x[k] for k in ("source", "titre", "lien", "date")} for x in articles if x["type"] == "article"],
+             "videos": [{k: x[k] for k in ("source", "titre", "lien")} for x in videos],
+             "recherche_video": plan.get("recherche_video") or a.get("recherche_video") or [titre]}
+    (dos / "sujet.json").write_text(json.dumps(sujet, ensure_ascii=False, indent=1), encoding="utf-8")
+    if plan.get("parts"):
+        (dos / "parts.json").write_text(json.dumps(plan["parts"], ensure_ascii=False, indent=1), encoding="utf-8")
+    if plan.get("description"):
+        tags = " ".join([h for h in plan.get("hashtags", [])[:5] if h.lower() != "#laffaire_france"] + ["#laffaire_france"])
+        (dos / "description_tiktok.txt").write_text(plan["description"] + "\n\n" + tags + "\n", encoding="utf-8")
+    (dos / "dossier.md").write_text(dossier_md(sujet), encoding="utf-8")
+    return dos
+
+
+def dossier_md(s):
+    a, p = s["analyse"], s["plan"]
+    L = [f"# {s['titre']}", "", f"Préparé le {s['prepare_le']} par la veille automatique. **À vérifier avant montage : rien n'est publié automatiquement.**", ""]
+    if a:
+        L += ["## Ce qui se passe", a.get("resume") or "", "", f"- Lieu : {a.get('lieu')}", f"- Heure : {a.get('heure')}",
+              f"- Potentiel TikTok : {a.get('score_tiktok')}/10 — {a.get('raison_score')}", ""]
+        L += ["### Confirmé"] + [f"- {x}" for x in a.get("faits_confirmes") or []] + ["", "### Incertain"] + [f"- {x}" for x in a.get("incertain") or []] + [""]
+    if s.get("approfondi"):
+        r = s["approfondi"]
+        L += ["## Recherche approfondie"] + [f"- {x}" for x in (r.get("nouveaux_elements") or []) + (r.get("officiel") or [])] + [""]
+    if p:
+        L += [f"## Modèle conseillé : n° {p.get('modele_conseille', 2)}", "", "## Titre à l'écran", f"**{p.get('titre_ecran')}**", f"_{p.get('ligne_grise')}_", "",
+              "## Voix off (parts.json)"]
+        L += [f"{i + 1}. {x}" for i, x in enumerate(p.get("parts") or [])]
+        nb = sum(len(x.split()) for x in p.get("parts") or [])
+        L += ["", f"({nb} mots — viser 155 à 185 pour 61 s minimum)", "", "## Plans, zooms, effets"]
+        L += [f"- Partie {x.get('partie')} : {x.get('images')} — effet : {x.get('effet')} — texte : {x.get('incrustation')}" for x in p.get("plans") or []]
+        m = p.get("miniature") or {}
+        L += ["", "## Miniature", f"`\"{m.get('lignes')}\" \"{m.get('sous_titre')}\"`", "", "## Description TikTok", p.get("description") or "",
+              " ".join(p.get("hashtags") or []) + " #laffaire_france", "", "## À vérifier"] + [f"- {x}" for x in p.get("a_verifier") or []]
+    L += ["", "## Vidéos"] + [f"- [{v['source']} : {v['titre']}]({v['lien']})" for v in s["videos"]]
+    L += ["", "Requêtes pour chercher la vidéo originale :"] + [f"- `{q}`" for q in s["recherche_video"]]
+    L += ["", "## Sources"] + [f"- [{x['source']}]({x['lien']}) — {x['titre']} ({x['date']})" for x in s["articles"]]
+    L += [f"- [{n or 'web'}]({u})" for n, u in s.get("sources_web") or []]
+    return "\n".join(L) + "\n"
+
+
+def traiter_clics(etat):
+    if ESSAI or not tg.TOKEN:
+        return
+    liste, etat["offset"] = tg.clics(etat.get("offset", 0))
+    for id_clic, action, eid, mid in liste:
+        ev = etat["evenements"].get(eid)
+        if not ev:
+            tg.repondre_clic(id_clic, "Événement expiré (plus de 3 jours).")
+            continue
+        if action == "ign":
+            ev["statut"] = "ignore"
+            tg.repondre_clic(id_clic, "Ignoré"); tg.marquer(mid, "✖️ Ignoré")
+        elif action == "plus":
+            tg.repondre_clic(id_clic, "Recherche en cours…")
+            tg.envoyer(texte_approfondi(ev, approfondir(ev)), ev["id"], reponse_a=mid)
+        elif action == "prep":
+            tg.repondre_clic(id_clic, "Préparation du dossier…")
+            dos = preparer(ev)
+            ev["statut"], ev["dossier"] = "prepare", dos.name
+            tg.marquer(mid, "🎬 Dossier préparé")
+            tg.envoyer_fichier(dos / "dossier.md", f"🎬 Dossier prêt : {dos.name}\n\nSur ton PC, dis à Claude Code :\n« prépare le sujet {dos.name} »\n(rien n'est publié sans toi)")
+
+
+# ---------- Tour complet ----------
+
+def main():
+    etat = json.loads(ETAT.read_text(encoding="utf-8")) if ETAT.exists() else {"vus": {}, "evenements": {}, "offset": 0}
+    premier_tour = not etat["vus"]
+    traiter_clics(etat)
+    articles = collecter()
+    nouveaux = [a for a in articles if a["id"] not in etat["vus"]]
+    for a in nouveaux:
+        etat["vus"][a["id"]] = a["ts"]
+    print(f"{len(articles)} articles lus, {len(nouveaux)} nouveaux")
+    touches = regrouper(etat, nouveaux)
+    for eid in touches:
+        noter(etat["evenements"][eid])
+    traiter_alertes(etat, touches, premier_tour)
+    # ménage : on oublie ce qui est trop vieux
+    limite = maintenant() - config.GARDER_HEURES * 3600
+    etat["evenements"] = {k: v for k, v in etat["evenements"].items() if v.get("maj", v["cree"]) >= limite or v["statut"] == "prepare" and v["cree"] >= limite - 4 * 86400}
+    etat["vus"] = {k: t for k, t in etat["vus"].items() if t >= limite - 86400}
+    if not ESSAI:
+        ETAT.parent.mkdir(exist_ok=True)
+        ETAT.write_text(json.dumps(etat, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    top = sorted(etat["evenements"].values(), key=lambda ev: -ev.get("score", 0))[:12]
+    print("\nÉvénements les mieux notés :")
+    for ev in top:
+        print(f"  {ev.get('score', 0):5.1f} | {ev['nb_sources']:2} sources | {ev['articles'][0]['titre'][:90]}")
+
+
+if __name__ == "__main__":
+    main()
