@@ -107,9 +107,22 @@ def lire_telegram(nom, canal, pays, typ):
     return res
 
 
+def lire_youtube_api(nom, chaine, pays, typ, cle):
+    """Dernières vidéos d'une chaîne via l'API officielle (1 unité de quota sur 10 000 par jour)."""
+    r = requests.get("https://www.googleapis.com/youtube/v3/playlistItems", timeout=20, params={
+        "part": "snippet", "playlistId": "UU" + chaine[2:], "maxResults": 15, "key": cle})
+    r.raise_for_status()
+    import html as h
+    return [article(nom, h.unescape(i["snippet"]["title"]), "https://www.youtube.com/watch?v=" + i["snippet"]["resourceId"]["videoId"],
+                    iso(i["snippet"]["publishedAt"]), pays, typ, i["snippet"].get("description", "")) for i in r.json().get("items", [])]
+
+
 def lire_flux(f):
     nom, url, pays, typ = f
+    cle_yt = os.environ.get("YOUTUBE_API_KEY", "").strip()
     try:
+        if "youtube.com/feeds" in url and cle_yt:  # les flux RSS YouTube sont bloqués depuis les serveurs GitHub
+            return lire_youtube_api(nom, url.split("channel_id=")[1], pays, typ, cle_yt)
         if url.startswith("bsky:"):
             return lire_bluesky(nom, url[5:], pays, typ)
         if url.startswith("tg:"):
