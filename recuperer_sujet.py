@@ -19,6 +19,18 @@ API = f"https://api.github.com/repos/{DEPOT}/contents/sujets"
 
 if not DEPOT:
     raise SystemExit("Ajoute VEILLE_DEPOT=compte/depot dans veille_laffaire/.env")
+# dépôt privé : on s'identifie avec la connexion GitHub déjà faite (gh portable)
+GH = Path(os.environ.get("LOCALAPPDATA", "")) / "outils" / "gh" / "bin" / "gh.exe"
+jeton = os.environ.get("GITHUB_TOKEN", "")  # le Python du Microsoft Store ne voit pas toujours gh : passer $env:GITHUB_TOKEN = (gh auth token)
+if not jeton:
+    try:
+        jeton = subprocess.run([str(GH), "auth", "token"], capture_output=True, text=True).stdout.strip()
+    except OSError:
+        pass
+S = requests.Session()
+if jeton:
+    S.headers["Authorization"] = "Bearer " + jeton
+requests = S  # toutes les requêtes ci-dessous passent par la session identifiée
 liste = requests.get(API, timeout=30).json()
 noms = sorted((x["name"] for x in liste if x.get("type") == "dir"), reverse=True) if isinstance(liste, list) else []
 if len(sys.argv) < 2:
@@ -44,7 +56,8 @@ candidats = []
 for q in sujet["recherche_video"][:3]:
     r = subprocess.run(["yt-dlp", "--flat-playlist", "--print", "%(webpage_url)s | %(channel)s | %(title)s | %(duration)s s",
                         f"ytsearch8:{q}"], capture_output=True, text=True, encoding="utf-8")
-    candidats += r.stdout.splitlines()
+    candidats += (r.stdout or "").splitlines()
+    if r.returncode: print("  yt-dlp :", (r.stderr or "")[-300:])
 (dos / "sources_video" / "candidats.txt").write_text("\n".join(candidats), encoding="utf-8")
 for i, url in enumerate(videos):
     subprocess.run(["yt-dlp", "-f", "bv*[height<=1920]+ba/b", "--merge-output-format", "mp4", "--write-info-json",
