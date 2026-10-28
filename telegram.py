@@ -38,6 +38,10 @@ def texte_alerte(ev):
     lieu = " · ".join(x for x in [a.get("lieu") and f"📍 {e(a['lieu'])}", a.get("heure") and f"🕒 {e(a['heure'])}"] if x)
     if lieu:
         t.append(lieu)
+    premier = min(ev["articles"], key=lambda x: x["ts"])
+    t.append(f"🗓️ Première info : {e(premier['date'])} ({e(premier['source'])})")
+    if a.get("nouveau"):
+        t.append(f"🆕 <b>Nouveau :</b> {e(a['nouveau'])}")
     if a.get("resume"):
         t.append("\n" + e(a["resume"]))
     if a.get("faits_confirmes"):

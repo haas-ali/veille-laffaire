@@ -61,14 +61,18 @@ Règles absolues :
 
 def analyser(evenement, deja=()):
     """Analyse un événement regroupé. deja = titres des alertes déjà envoyées (anti-doublon). Renvoie un dict ou None."""
-    lignes = "\n".join(f"- [{a['source']}] {a['titre']} — {a.get('resume', '')[:400]} ({a['date']})" for a in evenement["articles"][:15])
+    arts = sorted(evenement["articles"], key=lambda a: a["ts"])
+    arts = arts[:4] + arts[4:][-11:]  # le début de l'histoire + les derniers rebondissements
+    lignes = "\n".join(f"- [{a['source']}] {a['titre']} — {a.get('resume', '')[:400]} ({a['date']})" for a in arts)
+    premier = arts[0]["date"]
     deja_txt = "\n".join(f"{i}. {t}" for i, t in enumerate(deja)) or "aucune"
     prompt = f"""Tu fais la veille d'actualité du compte TikTok « L'Affaire » (@laffaire_france) : faits divers, drames, accidents, catastrophes,
 politique, insolite, célébrités/rappeurs/youtubeurs dans une situation inattendue, sujets qui deviennent viraux. Priorité : France, puis Europe.
 Les vidéos qui marchent : « Terrible drame, … » / « On vient de l'apprendre, … » + « Voici ce que l'on sait. », récit chronologique sourcé, vraie vidéo virale du sujet à l'écran.
 
-Voici les articles qui parlent du même événement :
+Voici les articles qui parlent du même événement, du plus ancien au plus récent (première info : {premier}) :
 {lignes}
+Si la première info date de plus de 12 h, ne note haut que s'il y a un VRAI nouveau rebondissement dans les articles récents ; sinon score_tiktok ≤ 4.
 
 Alertes déjà envoyées ces dernières 24 h :
 {deja_txt}
@@ -77,7 +81,7 @@ Alertes déjà envoyées ces dernières 24 h :
 
 Réponds avec ce JSON :
 {{"doublon_de": numéro de l'alerte déjà envoyée qui raconte EXACTEMENT le même fait (pas un nouveau rebondissement) ou null,
-"titre": "titre factuel court", "resume": "3 phrases maximum", "lieu": "ville, pays ou null", "heure": "date/heure de l'événement ou null",
+"titre": "titre factuel court", "nouveau": "ce qui est nouveau dans les dernières heures, ou null si rien", "resume": "3 phrases maximum", "lieu": "ville, pays ou null", "heure": "date/heure de l'événement ou null",
 "zone": "France" ou "Europe" ou "Monde", "categorie": "fait divers|accident|catastrophe|politique|insolite|celebrite|international|autre",
 "faits_confirmes": ["..."], "incertain": ["..."], "score_tiktok": 0-10, "raison_score": "1 phrase",
 "angle": "angle de vidéo pour L'Affaire en 1-2 phrases", "accroche": "1re phrase de la voix off", "recherche_video": ["2 ou 3 requêtes pour trouver la vidéo originale sur TikTok/X/YouTube"]}}
