@@ -235,7 +235,7 @@ def traiter_alertes(etat, touches, premier_tour):
             note = (ev.get("analyse") or {}).get("score_tiktok") or 0
             d = (ev.get("analyse") or {}).get("doublon_de")
             print(f"  IA {note}/10 {'(doublon)' if isinstance(d, int) else ''}| {ev['articles'][0]['titre'][:80]}")
-            if isinstance(d, int) and 0 <= d < len(deja):
+            if isinstance(d, int) and 0 <= d < len(deja) and len(signature(ev) & signature(deja[d])) >= 2:  # l'IA doit être confirmée par des mots communs
                 ev["notifie"] = True  # même fait qu'une alerte déjà envoyée : pas de nouvelle alerte
                 ev["doublon_de"] = deja[d]["id"]
             elif note >= config.SEUIL_NOTIF_IA:
