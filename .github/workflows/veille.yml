@@ -29,6 +29,7 @@ jobs:
           git fetch origin etat --depth=1 && git show origin/etat:etat.json > donnees/etat.json || echo "premier tour"
           git show origin/etat:viral.json > donnees/viral.json 2>/dev/null || rm -f donnees/viral.json
           git show origin/etat:suivi.json > donnees/suivi.json 2>/dev/null || rm -f donnees/suivi.json
+          git show origin/etat:espion.json > donnees/espion.json 2>/dev/null || rm -f donnees/espion.json
       - name: Tour de veille
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
@@ -43,7 +44,13 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-        run: python viral.py
+        # espion.py (comptes observés + analyse de leur méthode) tourne EN MÊME TEMPS que viral.py : le tour reste < 60 s
+        run: |
+          python espion.py > espion.log 2>&1 &
+          python viral.py || r=$?
+          wait $! || echo "espion en échec"
+          cat espion.log
+          exit ${r:-0}
       - name: Suivi de mes vidéos + meilleures heures
         if: always()
         env:
@@ -54,7 +61,7 @@ jobs:
         if: always()
         run: |
           [ -s donnees/etat.json ] || exit 0
-          d=$(mktemp -d); cp donnees/etat.json "$d/"; [ -f donnees/viral.json ] && cp donnees/viral.json "$d/"; [ -f donnees/suivi.json ] && cp donnees/suivi.json "$d/"; cd "$d"
+          d=$(mktemp -d); cp donnees/etat.json "$d/"; [ -f donnees/viral.json ] && cp donnees/viral.json "$d/"; [ -f donnees/suivi.json ] && cp donnees/suivi.json "$d/"; [ -f donnees/espion.json ] && cp donnees/espion.json "$d/"; cd "$d"
           git init -q -b etat; git add *.json
           git -c user.name=veille-bot -c user.email=veille-bot@users.noreply.github.com commit -qm etat
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" etat

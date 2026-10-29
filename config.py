@@ -116,6 +116,8 @@ COMPTES_TIKTOK = ["actuchrono60", "hugodecrypte", "brutofficiel", "konbini", "le
                   "streetpress_", "midilibre", "infoglobale.media", "stupmedia", "flashinfosoff", "ostor227", "actufrance14", "flash_actu24",
                   "lesignal.actu", "reclist", "zoomdefrance", "askyp.france", "letiktokinfo", "josselin.journaliste", "actucru",
                   "tera24_usa", "tera24_england"]
+# Observateur (espion.py) : alerte dès qu'ils postent + analyse de leur méthode de rétention (demande du 29/10/2026)
+COMPTES_ESPION = ["minutepeople.fr", "actuchrono60", "actuone.tv1", "bonnequestion.tv", "lepointactuu", "chronoactu"]
 # pour garder le tour cloud sous 60 s, chaque tour lit une moitié des comptes (en alternance) : chaque compte est lu toutes les heures
 MOITIE_PAR_TOUR = True
 
