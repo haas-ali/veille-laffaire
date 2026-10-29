@@ -130,6 +130,10 @@ if __name__ == "__main__":
     if sys.argv[1:2] == ["--message"]:  # utilise par la tache automatique du PC : python telegram.py --message "texte"
         envoyer(e(" ".join(sys.argv[2:])))
         raise SystemExit
+    if sys.argv[1:2] == ["--pret"]:  # python telegram.py --pret description_tiktok.txt "texte d'en-tete"
+        desc = open(sys.argv[2], encoding="utf-8").read().strip()
+        envoyer(f"{e(' '.join(sys.argv[3:]))}\n\n📋 <b>Description à copier</b> (appuie dessus pour copier) :\n<pre>{e(desc)}</pre>"[:4000])
+        raise SystemExit
     if not TOKEN:
         raise SystemExit("Mets TELEGRAM_TOKEN dans le fichier .env")
     print("Bot :", api("getMe")["username"])
