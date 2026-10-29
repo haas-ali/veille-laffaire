@@ -23,9 +23,9 @@ tg.API = f"https://api.telegram.org/bot{tg.TOKEN}/"
 
 
 def lire_compte(compte):
-    """Les 20 dernières vidéos d'un compte TikTok (yt-dlp, sans connexion)."""
+    """Les 12 dernières vidéos d'un compte TikTok (yt-dlp, sans connexion)."""
     try:
-        r = subprocess.run(["yt-dlp", "--encoding", "utf-8", "--flat-playlist", "--playlist-items", "1-20", "--print", CHAMPS,
+        r = subprocess.run(["yt-dlp", "--encoding", "utf-8", "--flat-playlist", "--playlist-items", "1-12", "--print", CHAMPS,
                             f"https://www.tiktok.com/@{compte}"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
     except (subprocess.TimeoutExpired, OSError) as ex:
         print(f"  ! @{compte} : {ex}"); return []
@@ -172,7 +172,7 @@ def main():
     etat["videos"] = {k: v for k, v in etat["videos"].items() if k.isdigit() or "mesure" not in v}  # oublie l'ancienne version YouTube
     premier = not etat["videos"]
     traiter_clics(etat)
-    with ThreadPoolExecutor(6) as p:
+    with ThreadPoolExecutor(len(config.COMPTES_TIKTOK)) as p:
         par_compte = list(p.map(lire_compte, config.COMPTES_TIKTOK))
     mesures = []
     for vids in par_compte:
