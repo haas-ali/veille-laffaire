@@ -83,10 +83,12 @@ def liens_recherche(requetes):
             f'<a href="https://www.youtube.com/results?search_query={q}&amp;sp=CAI%253D">YouTube</a>')
 
 
-def envoyer(texte, eid=None, reponse_a=None):
+def envoyer(texte, eid=None, reponse_a=None, clavier=None):
     p = {"chat_id": CHAT, "text": texte, "parse_mode": "HTML", "disable_web_page_preview": True}
     if eid:
         p["reply_markup"] = boutons(eid)
+    if clavier:
+        p["reply_markup"] = clavier
     if reponse_a:
         p["reply_parameters"] = {"message_id": reponse_a, "allow_sending_without_reply": True}
     return api("sendMessage", **p)["message_id"]
@@ -98,16 +100,26 @@ def envoyer_fichier(chemin, legende=""):
 
 
 def clics(offset):
-    """Renvoie (liste de (id_clic, action, eid, message_id), nouvel offset). Ignore les autres discussions."""
+    """Renvoie (clics [(id_clic, action, eid, message_id)], messages [(texte, id_message_cite)], nouvel offset).
+    Ignore tout ce qui ne vient pas de la discussion de l'utilisateur."""
     maj = api("getUpdates", offset=offset, timeout=0, allowed_updates=["callback_query", "message"])
-    res = []
+    res, msgs = [], []
     for u in maj:
         offset = u["update_id"] + 1
         c = u.get("callback_query")
         if c and str(c["message"]["chat"]["id"]) == CHAT and ":" in c.get("data", ""):
             action, eid = c["data"].split(":", 1)
             res.append((c["id"], action, eid, c["message"]["message_id"]))
-    return res, offset
+        m = u.get("message")
+        if m and str(m["chat"]["id"]) == CHAT and m.get("text"):
+            msgs.append((m["text"].strip(), (m.get("reply_to_message") or {}).get("message_id")))
+    return res, msgs, offset
+
+
+def boutons_video(eid):
+    """Sous le message « Vidéo prête » : refaire ou modifier, traité par la veille puis par la tâche du PC."""
+    return {"inline_keyboard": [[{"text": "🔁 Refaire", "callback_data": f"refaire:{eid}"},
+                                 {"text": "✏️ Modifier le texte", "callback_data": f"modif:{eid}"}]]}
 
 
 def repondre_clic(id_clic, texte):
@@ -159,7 +171,11 @@ if __name__ == "__main__":
         raise SystemExit
     if sys.argv[1:2] == ["--pret"]:  # python telegram.py --pret description_tiktok.txt "texte d'en-tete"
         desc = open(sys.argv[2], encoding="utf-8").read().strip()
-        envoyer(f"{e(' '.join(sys.argv[3:]))}\n\n📋 <b>Description à copier</b> (appuie dessus pour copier) :\n<pre>{e(desc)}</pre>"[:4000])
+        # id du sujet (sujet.json du dossier) pour les boutons Refaire / Modifier
+        sj = os.path.join(os.path.dirname(os.path.abspath(sys.argv[2])), "sujet.json")
+        eid = __import__("json").load(open(sj, encoding="utf-8")).get("id") if os.path.exists(sj) else None
+        envoyer(f"{e(' '.join(sys.argv[3:]))}\n\n📋 <b>Description à copier</b> (appuie dessus pour copier) :\n<pre>{e(desc)}</pre>"[:4000],
+                clavier=boutons_video(eid) if eid else None)
         raise SystemExit
     if not TOKEN:
         raise SystemExit("Mets TELEGRAM_TOKEN dans le fichier .env")

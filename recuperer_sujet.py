@@ -35,8 +35,20 @@ liste = requests.get(API, timeout=30).json()
 noms = sorted((x["name"] for x in liste if x.get("type") == "dir"), reverse=True) if isinstance(liste, list) else []
 TRAITES = ICI / "traites.txt"  # sujets deja montes sur ce PC (pour la tache automatique)
 faits = set(TRAITES.read_text(encoding="utf-8").split()) if TRAITES.exists() else set()
-if sys.argv[1:2] == ["--nouveaux"]:  # liste les sujets valides sur Telegram mais pas encore montes ; rien = rien a faire
-    print("\n".join(n for n in noms if n not in faits))
+def demandes():
+    """sujets/demandes.json : boutons « Refaire » / « Modifier le texte » cliques sous un message « Video prete »."""
+    r = requests.get(f"{API}/demandes.json", timeout=30)
+    if r.status_code != 200:
+        return {}
+    return json.loads(requests.get(r.json()["download_url"], timeout=30).content)
+
+
+if sys.argv[1:2] == ["--nouveaux"]:  # liste ce qui reste a faire ; rien = rien a faire
+    lignes = [n for n in noms if n not in faits]
+    for nom, d in demandes().items():  # nouvelle demande = « nom#n » pas encore dans traites.txt
+        if f"{nom}#{d['n']}" not in faits:
+            lignes.append(f"{nom}#{d['n']}  ← DEMANDE « {d['type']} » : " + (d.get("texte") or "refaire la vidéo (mieux, sans changer les faits)"))
+    print("\n".join(lignes))
     raise SystemExit
 if sys.argv[1:2] == ["--fait"]:
     with open(TRAITES, "a", encoding="utf-8") as f:
@@ -64,8 +76,8 @@ print("Modèle choisi sur Telegram :", sujet.get("modele", "non précisé"))
 videos = [v["lien"] for v in sujet["videos"] if "youtube.com" in v["lien"] or "youtu.be" in v["lien"]][:4]
 candidats = []
 for q in sujet["recherche_video"][:3]:
-    r = subprocess.run(["yt-dlp", "--flat-playlist", "--print", "%(webpage_url)s | %(channel)s | %(title)s | %(duration)s s",
-                        f"ytsearch8:{q}"], capture_output=True, text=True, encoding="utf-8")
+    r = subprocess.run(["yt-dlp", "--encoding", "utf-8", "--flat-playlist", "--print", "%(webpage_url)s | %(channel)s | %(title)s | %(duration)s s",
+                        f"ytsearch8:{q}"], capture_output=True, text=True, encoding="utf-8", errors="replace")
     candidats += (r.stdout or "").splitlines()
     if r.returncode: print("  yt-dlp :", (r.stderr or "")[-300:])
 (dos / "sources_video" / "candidats.txt").write_text("\n".join(candidats), encoding="utf-8")

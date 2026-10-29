@@ -278,6 +278,21 @@ def doit_analyser(ev):
     return ev["nb_sources"] >= ev["sources_analyse"] + 3  # l'événement a beaucoup grossi : on redemande
 
 
+try:
+    from zoneinfo import ZoneInfo
+    HEURE_PARIS = lambda: datetime.now(ZoneInfo("Europe/Paris"))
+except Exception:  # Windows sans base des fuseaux : heure d'hiver
+    HEURE_PARIS = lambda: datetime.now(PARIS)
+
+
+def seuil_actuel(etat):
+    """Note minimale pour alerter : /pause coupe tout, la nuit (0 h-7 h) seuls les 9-10/10 passent, sinon le /seuil choisi."""
+    if etat.get("pause"):
+        return 99
+    s = etat.get("seuil", config.SEUIL_NOTIF_IA)
+    return max(s, 9) if HEURE_PARIS().hour < 7 else s
+
+
 def alerter(ev):
     try:
         ev["videos_yt"] = recherche_youtube(ev)[:4]  # vraies vidéos YouTube récentes sur le sujet (clé gratuite)
@@ -348,7 +363,7 @@ def traiter_alertes(etat, touches, premier_tour):
             if isinstance(d, int) and 0 <= d < len(deja) and len(signature(ev) & signature(deja[d])) >= 2:  # l'IA doit être confirmée par des mots communs
                 ev["notifie"] = True  # même fait qu'une alerte déjà envoyée : pas de nouvelle alerte
                 ev["doublon_de"] = deja[d]["id"]
-            elif note >= config.SEUIL_NOTIF_IA:
+            elif note >= seuil_actuel(etat):
                 alerter(ev); ev["notifie"] = True
         elif not ia.CLE and ev["score"] >= config.SEUIL_NOTIF_SANS_IA:
             alerter(ev); ev["notifie"] = True; ev["analyses"] = 3
@@ -496,11 +511,80 @@ def dossier_md(s):
     return "\n".join(L) + "\n"
 
 
+AIDE = """🤖 <b>Commandes de la veille</b> (réponse au prochain tour, 30 min max)
+/statut — état de la veille
+/pause — coupe les alertes · /reprise — les remet
+/seuil 7 — alerte seulement à partir de 7/10 (actuel : {seuil})
+/sujets — derniers sujets préparés
+La nuit (0 h-7 h), seules les infos 9-10/10 sont envoyées."""
+
+
+def demander(etat, eid, demande):
+    """Note une demande (refaire / modifier) pour la tâche du PC dans sujets/demandes.json."""
+    ev = etat["evenements"].get(eid)
+    if not ev or not ev.get("dossier"):
+        return False
+    f = SUJETS / "demandes.json"
+    d = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+    n = d.get(ev["dossier"], {}).get("n", 0) + 1
+    d[ev["dossier"]] = {"n": n, "date": datetime.now(PARIS).isoformat(timespec="minutes"), **demande}
+    SUJETS.mkdir(exist_ok=True)
+    f.write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+    return True
+
+
+def commande(etat, texte, cite):
+    attente = etat.setdefault("attente_modif", {})
+    if cite and str(cite) in attente:  # réponse au message « ✏️ dis-moi quoi changer »
+        eid = attente.pop(str(cite))
+        ok = demander(etat, eid, {"type": "modif", "texte": texte})
+        tg.envoyer("✏️ Modification notée : la vidéo sera refaite par la tâche du PC (PC + appli Claude ouverts)." if ok else "Sujet introuvable (trop ancien).")
+        return
+    mot, _, reste = texte.partition(" ")
+    mot = mot.lower().split("@")[0]
+    if mot in ("/start", "/aide", "/help"):
+        tg.envoyer(AIDE.format(seuil=etat.get("seuil", config.SEUIL_NOTIF_IA)))
+    elif mot == "/pause":
+        etat["pause"] = True; tg.envoyer("⏸️ Alertes en pause. Tape /reprise pour les remettre.")
+    elif mot == "/reprise":
+        etat["pause"] = False; tg.envoyer("▶️ Alertes reprises.")
+    elif mot == "/seuil":
+        try:
+            n = int(reste.strip()); assert 1 <= n <= 10
+            etat["seuil"] = n; tg.envoyer(f"🎚️ Seuil réglé : alertes à partir de {n}/10.")
+        except (ValueError, AssertionError):
+            tg.envoyer("Écris par exemple : /seuil 7 (un nombre de 1 à 10).")
+    elif mot == "/statut":
+        h = maintenant() - 86400
+        nb = sum(1 for v in etat["evenements"].values() if v["notifie"] and not v.get("doublon_de") and v.get("maj", 0) >= h)
+        nuit = HEURE_PARIS().hour < 7
+        tg.envoyer(f"📊 <b>Veille</b> : {'⏸️ en pause' if etat.get('pause') else '▶️ active'}{' · 🌙 mode nuit' if nuit else ''}\n"
+                   f"Seuil : {etat.get('seuil', config.SEUIL_NOTIF_IA)}/10 · {len(etat['evenements'])} événements suivis · {nb} alertes en 24 h")
+    elif mot == "/sujets":
+        prep = sorted((v for v in etat["evenements"].values() if v["statut"] == "prepare"), key=lambda v: -v["cree"])[:10]
+        tg.envoyer("🎬 <b>Sujets préparés</b>\n" + ("\n".join(f"• {tg.e(v['dossier'])}" for v in prep) or "aucun pour l'instant"))
+    elif texte.startswith("/"):
+        tg.envoyer("Commande inconnue. Tape /aide.")
+
+
 def traiter_clics(etat):
     if ESSAI or not tg.TOKEN:
         return
-    liste, etat["offset"] = tg.clics(etat.get("offset", 0))
+    liste, msgs, etat["offset"] = tg.clics(etat.get("offset", 0))
+    for texte, cite in msgs:
+        commande(etat, texte, cite)
     for id_clic, action, eid, mid in liste:
+        if action == "refaire":
+            ok = demander(etat, eid, {"type": "refaire"})
+            tg.repondre_clic(id_clic, "Vidéo à refaire : notée" if ok else "Sujet introuvable")
+            if ok: tg.envoyer("🔁 Je refais la vidéo dès que le PC et l'appli Claude sont ouverts.", reponse_a=mid)
+            continue
+        if action == "modif":
+            tg.repondre_clic(id_clic, "Dis-moi quoi changer")
+            m = tg.api("sendMessage", chat_id=tg.CHAT, text="✏️ Réponds à CE message avec ce qu'il faut changer (texte, faits, images…).",
+                       reply_markup={"force_reply": True, "input_field_placeholder": "Ce qu'il faut changer"})
+            etat.setdefault("attente_modif", {})[str(m["message_id"])] = eid
+            continue
         ev = etat["evenements"].get(eid)
         if not ev:
             tg.repondre_clic(id_clic, "Événement expiré (plus de 3 jours).")
