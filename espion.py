@@ -134,11 +134,41 @@ def fmt(n):
     return f"{n / 1e6:.1f} M" if n >= 1e6 else f"{n / 1e3:.0f} k" if n >= 1e3 else str(int(n))
 
 
+def sujet_court(m):
+    """Le sujet en une ligne (« Mort d'un homme de 44 ans en garde à vue à … »), déduit de la légende. None si l'IA ne répond pas."""
+    try:
+        a, _ = ia.appeler(f"""Légende d'une vidéo TikTok d'actualité du compte @{m['compte']} : « {m['titre']} »
+Donne le SUJET de l'actu en une phrase courte et factuelle (qui, quoi, où), sans emoji ni hashtag. N'invente rien : si la légende ne dit pas de quoi il s'agit, mets null.
+Réponds avec ce JSON : {{"sujet": "..."}}""", modeles=ia.RAPIDES)
+        return (a or {}).get("sujet")
+    except Exception as ex:
+        print("  ! sujet :", ex); return None
+
+
+def deja_traite(m, etat):
+    """Les autres comptes observés qui ont parlé du même sujet ces 48 h (au moins 2 mots rares en commun : noms, lieux…)."""
+    autres = [x for x in etat["videos"].values() if x["compte"] != m["compte"] and time.time() - x["ts"] < 48 * 3600]
+    corpus = [x["titre"] for x in etat["videos"].values()]
+    vir = V.ICI / "donnees" / "viral.json"
+    if vir.exists():  # plus de titres = meilleure idée de ce qui est un mot « rare »
+        corpus += [x.get("titre", "") for x in json.loads(vir.read_text(encoding="utf-8")).get("videos", {}).values()]
+    df, seuil = V.rarete(corpus)
+    ma = V.mots(m["titre"] + " " + (m.get("sujet") or ""))
+    return sorted({x["compte"] for x in autres if V.meme_sujet(ma, x["titre"] + " " + (x.get("sujet") or ""), df, seuil)})
+
+
 def texte_alerte(m):
     e = tg.e
-    return (f"👀 <b>@{e(m['compte'])} vient de poster</b>\n\n🎥 {e(m['titre'][:200])}\n"
-            f"⏱️ il y a {(time.time() - m['ts']) / 60:.0f} min · {m.get('duree') or '?'} s · 👀 {fmt(m['vues'])} vues\n"
-            f"🔬 Analyse de la méthode en cours…\n\n▶️ <a href=\"{e(m['lien'])}\">Voir la vidéo</a>")
+    t = [f"🔔 <b>@{e(m['compte'])} vient de poster</b>"]
+    if m.get("sujet"):
+        t.append(f"\n📰 <b>Sujet : {e(m['sujet'])}</b>")
+    t.append(f"\n🎥 {e(m['titre'][:200])}")
+    t.append(f"⏱️ postée il y a {(time.time() - m['ts']) / 60:.0f} min · {m.get('duree') or '?'} s · 👀 {fmt(m['vues'])} vues")
+    if m.get("aussi") is not None:
+        t.append("👥 Déjà traité par : " + ", ".join("@" + e(c) for c in m["aussi"]) if m["aussi"]
+                 else "🆕 Aucun de tes autres comptes observés n'en a parlé")
+    t.append(f"🔬 Analyse de la méthode en cours…\n\n▶️ <a href=\"{e(m['lien'])}\">Voir la vidéo</a>")
+    return "\n".join(t)
 
 
 def texte_fiche(m, a):
@@ -167,7 +197,8 @@ def texte_fiche(m, a):
 
 def bouton(m):
     """« 📋 Copier pour Claude » : même SUJET, refait à la façon de L'Affaire (nos sources, notre script) — jamais une copie de leur vidéo."""
-    ctx = tg.contexte(m["titre"][:120], m["lien"], f"sujet repéré chez @{m['compte']}, à refaire à ma façon avec nos sources, sans copier")
+    # court, sinon Telegram (256 caractères) coupe le lien de la vidéo
+    ctx = tg.contexte((m.get("sujet") or m["titre"])[:100].rstrip("."), m["lien"], f"repéré chez @{m['compte']}")
     return {"inline_keyboard": [[tg.bouton_copier(ctx)]]}
 
 
@@ -256,6 +287,8 @@ def main():
             m.update(essais=0, a_faire=nouveau or (premier and v is vids[0] and now - m["ts"] < 48 * 3600))
             etat["videos"][m["id"]] = m
             if nouveau:
+                m["sujet"] = sujet_court(m) if ia.CLE else None
+                m["aussi"] = deja_traite(m, etat)
                 m["msg"] = envoyer(texte_alerte(m), clavier=bouton(m))
     rates = [c for c, v in lus if not v]
     print(f"{sum(len(v) for _, v in lus)} vidéos lues sur {len(lus)} comptes" + (f" (en échec : {', '.join(rates)})" if rates else ""))
