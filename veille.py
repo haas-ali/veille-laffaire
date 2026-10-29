@@ -543,6 +543,8 @@ def commande(etat, texte, cite):
         return
     mot, _, reste = texte.partition(" ")
     mot = mot.lower().split("@")[0]
+    if not mot.startswith("/") and mot in ("start", "aide", "help", "pause", "reprise", "seuil", "statut", "sujets"):
+        mot = "/" + mot  # « Statut » sans la barre marche aussi
     if mot in ("/start", "/aide", "/help"):
         tg.envoyer(AIDE.format(seuil=etat.get("seuil", config.SEUIL_NOTIF_IA)))
     elif mot == "/pause":
