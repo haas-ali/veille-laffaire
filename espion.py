@@ -165,11 +165,17 @@ def texte_fiche(m, a):
     return tg.assembler(t)
 
 
-def envoyer(texte, reponse_a=None):
+def bouton(m):
+    """« 📋 Copier pour Claude » : même SUJET, refait à la façon de L'Affaire (nos sources, notre script) — jamais une copie de leur vidéo."""
+    ctx = tg.contexte(m["titre"][:120], m["lien"], f"sujet repéré chez @{m['compte']}, à refaire à ma façon avec nos sources, sans copier")
+    return {"inline_keyboard": [[tg.bouton_copier(ctx)]]}
+
+
+def envoyer(texte, reponse_a=None, clavier=None):
     if ESSAI or not tg.TOKEN:
         print(re.sub(r"<[^>]+>", "", texte) + "\n" + "=" * 60); return None
     try:
-        return tg.envoyer(texte, reponse_a=reponse_a)
+        return tg.envoyer(texte, reponse_a=reponse_a, clavier=clavier)
     except RuntimeError as ex:
         print("  ! Telegram :", ex); return None
 
@@ -250,7 +256,7 @@ def main():
             m.update(essais=0, a_faire=nouveau or (premier and v is vids[0] and now - m["ts"] < 48 * 3600))
             etat["videos"][m["id"]] = m
             if nouveau:
-                m["msg"] = envoyer(texte_alerte(m))
+                m["msg"] = envoyer(texte_alerte(m), clavier=bouton(m))
     rates = [c for c, v in lus if not v]
     print(f"{sum(len(v) for _, v in lus)} vidéos lues sur {len(lus)} comptes" + (f" (en échec : {', '.join(rates)})" if rates else ""))
     a_faire = sorted((x for x in etat["videos"].values() if x.get("a_faire") and now - x["ts"] < 48 * 3600), key=lambda x: -x["ts"])[:2]
@@ -267,7 +273,7 @@ def main():
                 x, a = futs[fut], fut.result()
                 if a:  # fiche envoyée puis enregistrée aussitôt (jamais deux fois la même)
                     x.update(analyse=a, a_faire=False)
-                    envoyer(texte_fiche(x, a), reponse_a=x.get("msg"))
+                    envoyer(texte_fiche(x, a), reponse_a=x.get("msg"), clavier=bouton(x))
                     enregistrer(etat)
                     print(f"  fiche @{x['compte']} : {x['titre'][:50]}")
     paris = datetime.now(V.PARIS)
