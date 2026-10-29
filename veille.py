@@ -293,8 +293,8 @@ def pourcentages(ev):
     a = ev.get("analyse") or {}
     n = len({media(x["source"]) for x in ev["articles"]})
     recents = len({media(x["source"]) for x in ev["articles"] if x["ts"] >= maintenant() - 3 * 3600})
-    v = (a.get("score_tiktok") or 0) * 9 + (6 if any(x["type"] == "video" for x in ev["articles"]) or ev.get("videos_yt") else 0)
-    v += min(15, recents * 3) + (5 if ev.get("urgent") else 0)
+    v = (a.get("score_tiktok") or 0) * 8 + (5 if any(x["type"] == "video" for x in ev["articles"]) or ev.get("videos_yt") else 0)
+    v += min(12, recents * 2) + (4 if ev.get("urgent") else 0)
     return max(5, min(99, round(v))), min(100, round(n / 15 * 100)), n
 
 
@@ -366,19 +366,29 @@ def traiter_alertes(etat, touches, premier_tour):
         candidats = candidats[:3]  # pas d'avalanche au démarrage
     analyses = 0
     limite = maintenant() - 86400
+    lot = candidats[:config.MAX_ANALYSES_PAR_TOUR] if ia.CLE else []
+    deja_tous = [x for x in etat["evenements"].values() if x["notifie"] and x.get("maj", 0) >= limite]
+
+    def analyse(ev):  # les analyses IA du tour partent en même temps (le tour cloud doit rester < 60 s)
+        deja = [x for x in deja_tous if x is not ev]
+        try:
+            return ev, deja, ia.analyser(ev, [(x.get("analyse") or {}).get("titre") or x["articles"][0]["titre"] for x in deja], gouts(etat))
+        except Exception as ex:
+            return ev, deja, ex
+
+    with ThreadPoolExecutor(4) as p:
+        resultats = list(p.map(analyse, lot))
     for ev in candidats:
-        if ia.CLE and analyses < config.MAX_ANALYSES_PAR_TOUR:
-            deja = [x for x in etat["evenements"].values() if x["notifie"] and x.get("maj", 0) >= limite and x is not ev]
-            try:
-                ev["analyse"] = ia.analyser(ev, [(x.get("analyse") or {}).get("titre") or x["articles"][0]["titre"] for x in deja],
-                                            gouts(etat)) or ev.get("analyse")
-            except ia.QuotaEpuise:
-                print("  ! quota IA atteint, on reprendra au prochain tour")
-                break
-            except Exception as ex:
-                print("  ! IA :", ex)
-                continue
+        if ia.CLE and analyses < len(resultats):
+            _, deja, res = resultats[analyses]
             analyses += 1
+            if isinstance(res, ia.QuotaEpuise):
+                print("  ! quota IA atteint, on reprendra au prochain tour")
+                continue
+            if isinstance(res, Exception):
+                print("  ! IA :", res)
+                continue
+            ev["analyse"] = res or ev.get("analyse")
             ev["analyses"] += 1
             ev["sources_analyse"] = ev["nb_sources"]
             note = (ev.get("analyse") or {}).get("score_tiktok") or 0
