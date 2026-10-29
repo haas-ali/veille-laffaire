@@ -280,7 +280,8 @@ def doit_analyser(ev):
 
 try:
     from zoneinfo import ZoneInfo
-    HEURE_PARIS = lambda: datetime.now(ZoneInfo("Europe/Paris"))
+    _TZ = ZoneInfo("Europe/Paris")  # erreur ici (et non plus tard) si la base des fuseaux manque
+    HEURE_PARIS = lambda: datetime.now(_TZ)
 except Exception:  # Windows sans base des fuseaux : heure d'hiver
     HEURE_PARIS = lambda: datetime.now(PARIS)
 
