@@ -73,7 +73,7 @@ print("Dossier :", dos)
 print("Modèle choisi sur Telegram :", sujet.get("modele", "non précisé"))
 
 # Vidéos : celles trouvées par la veille + recherche YouTube (yt-dlp, comme dans le workflow habituel)
-videos = [v["lien"] for v in sujet["videos"] if "youtube.com" in v["lien"] or "youtu.be" in v["lien"]][:4]
+videos = [v["lien"] for v in sujet["videos"] if any(d in v["lien"] for d in ("youtube.com", "youtu.be", "tiktok.com"))][:4]
 candidats = []
 for q in sujet["recherche_video"][:3]:
     r = subprocess.run(["yt-dlp", "--encoding", "utf-8", "--flat-playlist", "--print", "%(webpage_url)s | %(channel)s | %(title)s | %(duration)s s",
