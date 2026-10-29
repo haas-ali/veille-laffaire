@@ -32,7 +32,8 @@ def reste():
 
 def lire_compte(compte):
     try:
-        r = subprocess.run(["yt-dlp", "--encoding", "utf-8", "--flat-playlist", "--playlist-items", "1-5", "--print", CHAMPS,
+        # 8 vidéos : les vidéos épinglées sortent en premier dans la liste, elles ne doivent pas cacher les nouvelles
+        r = subprocess.run(["yt-dlp", "--encoding", "utf-8", "--flat-playlist", "--playlist-items", "1-8", "--print", CHAMPS,
                             f"https://www.tiktok.com/@{compte}"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=40)
     except (subprocess.TimeoutExpired, OSError) as ex:
         print(f"  ! @{compte} : {ex}"); return compte, []

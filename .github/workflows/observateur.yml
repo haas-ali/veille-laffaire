@@ -1,0 +1,47 @@
+name: Observateur (6 comptes)
+
+# Tour léger, seulement espion.py : décalé du tour principal (GitHub espace ses tours d'environ 55 min en réalité, mesuré le 29/10)
+# pour vérifier les 6 comptes observés deux fois plus souvent. Aussi lancé par le guetteur du PC (guetteur.ps1) dès qu'un compte poste.
+on:
+  schedule:
+    - cron: "15,45 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: veille            # même groupe que le tour principal : jamais deux écritures de la branche etat en même temps
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  observateur:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Récupérer l'état (branche « etat »)
+        run: |
+          mkdir -p donnees
+          git fetch origin etat --depth=1 || exit 0
+          for f in etat viral suivi espion; do git show origin/etat:$f.json > donnees/$f.json 2>/dev/null || rm -f donnees/$f.json; done
+      - name: Observateur
+        env:
+          TELEGRAM_TOKEN_VIRAL: ${{ secrets.TELEGRAM_TOKEN_VIRAL }}
+          TELEGRAM_TOKEN_ESPION: ${{ secrets.TELEGRAM_TOKEN_ESPION }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python espion.py
+      - name: Enregistrer l'état (écrase la branche, sans historique)
+        if: always()
+        run: |
+          [ -s donnees/etat.json ] || exit 0
+          d=$(mktemp -d); for f in etat viral suivi espion; do [ -f donnees/$f.json ] && cp donnees/$f.json "$d/"; done; cd "$d"
+          git init -q -b etat; git add *.json
+          git -c user.name=veille-bot -c user.email=veille-bot@users.noreply.github.com commit -qm etat
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" etat
