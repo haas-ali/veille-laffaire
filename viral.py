@@ -196,8 +196,13 @@ def main():
     if config.MOITIE_PAR_TOUR:  # une moitié par tour, en alternance (heure paire/impaire de la demi-heure)
         moitie = int(time.time() // 1800) % 2
         comptes = comptes[moitie::2]
-    with ThreadPoolExecutor(48) as p:
+    with ThreadPoolExecutor(20) as p:  # pas trop de lectures simultanées : TikTok répond 403 s'il se sent bombardé
         par_compte = list(p.map(lire_compte, comptes))
+        ratés = [i for i, v in enumerate(par_compte) if not v]
+        if ratés:  # 2e essai pour les comptes refusés
+            time.sleep(2)
+            for i, v in zip(ratés, p.map(lire_compte, [comptes[i] for i in ratés])):
+                par_compte[i] = v
     mesures = []
     for vids in par_compte:
         anciennes = [int(v["view_count"]) for v in vids if time.time() - v["timestamp"] > 12 * 3600]  # référence : vidéos déjà « mûres »
