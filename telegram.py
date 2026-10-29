@@ -40,13 +40,11 @@ def contexte(titre, lien, extra=""):
 
 
 def boutons(eid, ctx=None):
-    lignes = [[{"text": "🎬 Modèle 1", "callback_data": f"prep1:{eid}"},
-               {"text": "🎬 Modèle 2", "callback_data": f"prep2:{eid}"},
-               {"text": "🎬 Modèle 3", "callback_data": f"prep3:{eid}"}],
-              [{"text": "🔎 APPROFONDIR", "callback_data": f"plus:{eid}"},
+    # 29/10 : plus de boutons Modèle 1/2/3 (l'utilisateur copie la demande et la colle dans Claude)
+    lignes = [[{"text": "🔎 APPROFONDIR", "callback_data": f"plus:{eid}"},
                {"text": "✖️ IGNORER", "callback_data": f"ign:{eid}"}]]
     if ctx:
-        lignes.insert(1, [bouton_copier(ctx)])
+        lignes.insert(0, [bouton_copier(ctx)])
     return {"inline_keyboard": lignes}
 
 

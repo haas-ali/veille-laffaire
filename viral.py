@@ -137,8 +137,7 @@ def texte(m, a):
 
 def boutons(m, a):
     ctx = tg.contexte((a or {}).get("sujet") or m["titre"][:150], m["lien"], f"vidéo TikTok de {m['chaine']} qui perce")
-    return {"inline_keyboard": [[{"text": "🎬 Refaire la vidéo", "callback_data": f"vprep2:{m['id']}"}],
-                                [tg.bouton_copier(ctx), {"text": "✖️ IGNORER", "callback_data": f"vign:{m['id']}"}]]}
+    return {"inline_keyboard": [[tg.bouton_copier(ctx), {"text": "✖️ IGNORER", "callback_data": f"vign:{m['id']}"}]]}
 
 
 def preparer(etat, vid, modele):
@@ -172,7 +171,7 @@ def traiter_clics(etat):
             nb = sum(1 for v in etat["videos"].values() if v.get("alerte") is True and v.get("maj", 0) > time.time() - 86400)
             tg.envoyer(f"🚀 <b>Viral L'Affaire</b> : je surveille les vidéos TikTok d'actualité qui percent ({len(config.COMPTES_TIKTOK)} comptes d'info), "
                        f"toutes les 30 min.\n🟢 explose · 🟠 perce · 🟡 monte\n{nb} alerte(s) ces dernières 24 h.\n"
-                       "« Refaire la vidéo » = le sujet est préparé puis monté par ton PC (modèle 2). « 📋 Copier pour Claude » = copie la demande à coller dans Claude.")
+                       "« 📋 Copier pour Claude » = copie la demande, à coller dans Claude.")
     for id_clic, action, vid, mid in liste:
         if vid not in etat["videos"] or "mesure" not in etat["videos"][vid]:
             tg.repondre_clic(id_clic, "Vidéo expirée"); continue
