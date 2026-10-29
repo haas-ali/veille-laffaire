@@ -349,7 +349,10 @@ def alerter(ev):
     if ESSAI:
         print("\n" + "=" * 70 + "\n" + re.sub(r"<[^>]+>", "", msg))
         return
-    ev["message_id"] = tg.envoyer(msg, ev["id"])
+    a = ev.get("analyse") or {}
+    art = next((x for x in ev["articles"] if x["type"] == "article"), ev["articles"][0])
+    ctx = tg.contexte(a.get("titre") or art["titre"], art["lien"], ", ".join(x for x in (a.get("lieu"), a.get("heure")) if x))
+    ev["message_id"] = tg.envoyer(msg, clavier=tg.boutons(ev["id"], ctx))
 
 
 def gouts(etat):

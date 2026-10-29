@@ -135,9 +135,10 @@ def texte(m, a):
     return tg.assembler(t)
 
 
-def boutons(vid):
-    return {"inline_keyboard": [[{"text": f"🎬 Refaire · Modèle {n}", "callback_data": f"vprep{n}:{vid}"} for n in (1, 2, 3)],
-                                [{"text": "✖️ IGNORER", "callback_data": f"vign:{vid}"}]]}
+def boutons(m, a):
+    ctx = tg.contexte((a or {}).get("sujet") or m["titre"][:150], m["lien"], f"vidéo TikTok de {m['chaine']} qui perce")
+    return {"inline_keyboard": [[{"text": "🎬 Refaire la vidéo", "callback_data": f"vprep2:{m['id']}"}],
+                                [tg.bouton_copier(ctx), {"text": "✖️ IGNORER", "callback_data": f"vign:{m['id']}"}]]}
 
 
 def preparer(etat, vid, modele):
@@ -171,7 +172,7 @@ def traiter_clics(etat):
             nb = sum(1 for v in etat["videos"].values() if v.get("alerte") is True and v.get("maj", 0) > time.time() - 86400)
             tg.envoyer(f"🚀 <b>Viral L'Affaire</b> : je surveille les vidéos TikTok d'actualité qui percent ({len(config.COMPTES_TIKTOK)} comptes d'info), "
                        f"toutes les 30 min.\n🟢 explose · 🟠 perce · 🟡 monte\n{nb} alerte(s) ces dernières 24 h.\n"
-                       "« Refaire · Modèle 1/2/3 » = le sujet est préparé puis monté par ton PC.")
+                       "« Refaire la vidéo » = le sujet est préparé puis monté par ton PC (modèle 2). « 📋 Copier pour Claude » = copie la demande à coller dans Claude.")
     for id_clic, action, vid, mid in liste:
         if vid not in etat["videos"] or "mesure" not in etat["videos"][vid]:
             tg.repondre_clic(id_clic, "Vidéo expirée"); continue
@@ -235,7 +236,7 @@ def main():
         if ESSAI:
             print(re.sub(r"<[^>]+>", "", texte(m, a)) + "\n" + "=" * 60)
         else:
-            tg.envoyer(texte(m, a), clavier=boutons(m["id"]))
+            tg.envoyer(texte(m, a), clavier=boutons(m, a))
         mem["alerte"] = True; envoyees += 1
     limite = time.time() - 4 * 86400  # ménage : on garde 4 jours
     etat["videos"] = {k: v for k, v in etat["videos"].items() if v.get("maj", 0) >= limite}

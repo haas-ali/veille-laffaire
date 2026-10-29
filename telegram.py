@@ -24,12 +24,30 @@ def api(methode, fichiers=None, **params):
     return j["result"]
 
 
-def boutons(eid):
-    return {"inline_keyboard": [[{"text": "🎬 Modèle 1", "callback_data": f"prep1:{eid}"},
-                                 {"text": "🎬 Modèle 2", "callback_data": f"prep2:{eid}"},
-                                 {"text": "🎬 Modèle 3", "callback_data": f"prep3:{eid}"}],
-                                [{"text": "🔎 APPROFONDIR", "callback_data": f"plus:{eid}"},
-                                 {"text": "✖️ IGNORER", "callback_data": f"ign:{eid}"}]]}
+def bouton_copier(texte):
+    """Copie le texte dans le presse-papiers du téléphone dès l'appui (sans attendre le prochain tour), à coller ensuite dans Claude."""
+    return {"text": "📋 Copier pour Claude", "copy_text": {"text": texte[:256]}}
+
+
+def contexte(titre, lien, extra=""):
+    """Demande prête à coller dans Claude (256 caractères max, limite de Telegram)."""
+    debut = (f"Claude, fais une vidéo L'Affaire sur : {titre}" + (f" ({extra})" if extra else "") + ".")[:200]
+    lien = lien.split("?")[0].split("#")[0]
+    fin = f" Source : {lien}"
+    if len(debut) + len(fin) > 256:  # lien trop long : le titre passe avant, on garde juste le nom du site
+        fin = " Source : " + lien.split("/")[2] if "://" in lien else ""
+    return (debut + fin)[:256]
+
+
+def boutons(eid, ctx=None):
+    lignes = [[{"text": "🎬 Modèle 1", "callback_data": f"prep1:{eid}"},
+               {"text": "🎬 Modèle 2", "callback_data": f"prep2:{eid}"},
+               {"text": "🎬 Modèle 3", "callback_data": f"prep3:{eid}"}],
+              [{"text": "🔎 APPROFONDIR", "callback_data": f"plus:{eid}"},
+               {"text": "✖️ IGNORER", "callback_data": f"ign:{eid}"}]]
+    if ctx:
+        lignes.insert(1, [bouton_copier(ctx)])
+    return {"inline_keyboard": lignes}
 
 
 def barre(p):
