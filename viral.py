@@ -59,7 +59,7 @@ def mesurer(v, med, etat):
     note = min(4, max(0, (math.log10(max(vitesse, 1)) - 2.7) * 2))  # 500 vues/h → 0 ; 5 000 → 2 ; 50 000 → 4
     note += min(4, max(0, (ratio - 1) * 1.3)) if ratio else 0      # 2× la médiane du compte → +1,3 ; 4× → +3,9
     note += min(2, max(0, (eng - 0.03) * 40))                       # 8 % d'interactions → +2
-    mem.update(titre=v.get("title", ""), maj=now)
+    mem.update(titre=v.get("title", ""), compte=v["compte"], ts=v["timestamp"], maj=now)
     return {"id": v["id"], "titre": (v.get("title") or "").strip(), "chaine": "@" + v["compte"], "age": age, "vues": vues,
             "vitesse": vitesse, "eng": eng, "ratio": ratio, "duree": int(v.get("duration") or 0), "ts": v["timestamp"],
             "note": round(note, 1), "lien": f"https://www.tiktok.com/@{v['compte']}/video/{v['id']}"}
@@ -86,18 +86,23 @@ Réponds avec ce JSON :
     return res
 
 
-def couverture(m, evs, a=None):
-    """Combien de médias (lus par la veille) parlent déjà du sujet de la vidéo : (%, nombre)."""
+def couverture(m, evs, videos, a=None):
+    """Qui parle déjà du sujet : médias lus par la veille + comptes TikTok surveillés (48 h). Renvoie (%, médias, comptes TikTok).
+    Même sujet = au moins 2 mots RARES en commun (noms propres…), pour ne pas mélanger des sujets qui partagent des mots courants."""
     ma = V.mots(m["titre"] + " " + ((a or {}).get("sujet") or ""))
-    meilleur, score = None, 0.0
-    for ev in evs:
-        s = V.similarite(ma, V.signature(ev), lambda w: 1.0)
-        if s > score:
-            meilleur, score = ev, s
-    if not meilleur or score < 0.5:
-        return 0, 0
-    n = len({V.media(x["source"]) for x in meilleur["articles"]})
-    return min(100, round(n / 15 * 100)), n
+    articles = [x for ev in evs for x in ev["articles"]]
+    limite = time.time() - 48 * 3600
+    vids = [v for v in videos.values() if v.get("compte") and v.get("ts", 0) >= limite]
+    df, seuil = V.rarete([x["titre"] for x in articles] + [v.get("titre", "") for v in vids])
+    medias = {V.media(x["source"]) for x in articles if V.meme_sujet(ma, x["titre"], df, seuil)}  # petits sujets (mots rares)
+    n = len(articles) + len(vids) + 1
+    poids = lambda w: math.log(n / df.get(w, 1))
+    for ev in evs:  # gros sujets : la vidéo ressemble à l'ensemble d'un événement regroupé par la veille
+        if V.similarite(ma, V.signature(ev), poids) >= 0.45:
+            medias |= {V.media(x["source"]) for x in ev["articles"]}
+    comptes = {v["compte"] for v in vids if V.meme_sujet(ma, v.get("titre", ""), df, seuil)}
+    comptes.discard(m["chaine"].lstrip("@"))
+    return min(100, round((len(medias) + len(comptes)) / 15 * 100)), len(medias), len(comptes)
 
 
 def couleur(m):
@@ -118,7 +123,7 @@ def texte(m, a):
          f"\n📈 <b>{fmt(m['vues'])} vues</b> en {m['age']:.0f} h · <b>{fmt(m['vitesse'])} vues/heure</b>",
          f"💬 {m['eng'] * 100:.1f} % d'interactions" + (f" · 🚀 {m['ratio']:.1f}× plus que d'habitude" if m["ratio"] else ""),
          f"Score viral : <b>{m['note']}/10</b>" + (f" · Intérêt pour L'Affaire : <b>{a.get('note_refaire')}/10</b>" if a else ""),
-         tg.jauges(min(99, round(m["note"] * 10)), m.get("pct_medias", 0), m.get("nb_medias", 0))]
+         tg.jauges(min(99, round(m["note"] * 10)), m.get("pct_medias", 0), m.get("nb_medias", 0), m.get("nb_tiktok"))]
     if a:
         t.append(f"\n🧐 <b>De quoi ça parle :</b> {e(a.get('sujet'))}")
         if a.get("pourquoi_viral"):
@@ -216,7 +221,7 @@ def main():
     veille_etat = json.loads(V.ETAT.read_text(encoding="utf-8-sig")) if V.ETAT.exists() else {"evenements": {}}
     evs = list(veille_etat["evenements"].values())
     for m, a in zip(choisies, analyses):
-        m["pct_medias"], m["nb_medias"] = couverture(m, evs, a)
+        m["pct_medias"], m["nb_medias"], m["nb_tiktok"] = couverture(m, evs, etat["videos"], a)
         mem = etat["videos"][m["id"]]
         mem.update(mesure=m, analyse=a)
         print(f"  {m['note']:4.1f} | actu={(a or {}).get('actualite')} | {fmt(m['vitesse'])}/h | {m['chaine']} | {m['titre'][:60]}")

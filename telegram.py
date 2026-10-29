@@ -37,12 +37,17 @@ def barre(p):
     return "▰" * n + "▱" * (10 - n)
 
 
-def jauges(viral, medias, nb=None):
-    """Deux jauges : chances que ça perce, et à quel point les médias en parlent déjà."""
-    m = f"{medias} %" + (f" ({nb} média{'s' if nb > 1 else ''})" if nb is not None else "")
-    if medias == 0:
+def jauges(viral, couv, nb=None, nb_tiktok=None):
+    """Deux jauges : chances que ça perce, et à quel point on en parle déjà (presse + comptes TikTok d'actu surveillés)."""
+    detail = []
+    if nb is not None:
+        detail.append(f"{nb} média{'s' if nb > 1 else ''}")
+    if nb_tiktok is not None:
+        detail.append(f"{nb_tiktok} compte{'s' if nb_tiktok > 1 else ''} TikTok")
+    m = f"{couv} %" + (f" ({' · '.join(detail)})" if detail else "")
+    if couv == 0:
         m += " — personne n'en parle encore 👀"
-    return f"🔥 Viralité : <b>{viral} %</b> {barre(viral)}\n📰 Couverture médias : <b>{m}</b> {barre(medias)}"
+    return f"🔥 Viralité : <b>{viral} %</b> {barre(viral)}\n📰 Déjà traité : <b>{m}</b> {barre(couv)}"
 
 
 def niveau(ev):
@@ -64,7 +69,7 @@ def texte_alerte(ev):
     t.append(f"{'‼️' if ev.get('urgent') else '📰'} <b>{e(a.get('titre') or ev['articles'][0]['titre'])}</b>")
     t.append(f"Potentiel TikTok : <b>{note}/10</b>" if note is not None else f"(sans analyse IA — score mots-clés {ev['score']:.0f})")
     if ev.get("pct_viral") is not None:
-        t.append(jauges(ev["pct_viral"], ev["pct_medias"], ev.get("nb_medias")))
+        t.append(jauges(ev["pct_viral"], ev["pct_medias"], ev.get("nb_medias"), ev.get("nb_tiktok")))
     lieu = " · ".join(x for x in [a.get("lieu") and f"📍 {e(a['lieu'])}", a.get("heure") and f"🕒 {e(a['heure'])}"] if x)
     if lieu:
         t.append(lieu)

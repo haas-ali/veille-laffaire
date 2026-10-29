@@ -286,6 +286,20 @@ except Exception:  # Windows sans base des fuseaux : heure d'hiver
     HEURE_PARIS = lambda: datetime.now(PARIS)
 
 
+def rarete(textes):
+    """Fréquence des mots dans une liste de titres : sert à repérer les mots RARES (noms propres, lieux…)."""
+    df = {}
+    for t in textes:
+        for w in mots(t):
+            df[w] = df.get(w, 0) + 1
+    return df, max(3, len(textes) // 200)  # un mot est rare s'il apparaît dans au plus 0,5 % des titres (3 au minimum)
+
+
+def meme_sujet(ma, texte, df, seuil):
+    """Même sujet = au moins 2 mots rares en commun (ex. « maeva » + « ghennam »)."""
+    return len({w for w in ma & mots(texte) if len(w) >= 4 and df.get(w, 0) <= seuil}) >= 2
+
+
 def pourcentages(ev):
     """(% de viralité, % de couverture médias, nombre de médias).
     Viralité : note IA + vidéos disponibles + nombre de médias qui en parlent depuis 3 h (l'info s'emballe) + fait grave.
@@ -295,7 +309,16 @@ def pourcentages(ev):
     recents = len({media(x["source"]) for x in ev["articles"] if x["ts"] >= maintenant() - 3 * 3600})
     v = (a.get("score_tiktok") or 0) * 8 + (5 if any(x["type"] == "video" for x in ev["articles"]) or ev.get("videos_yt") else 0)
     v += min(12, recents * 2) + (4 if ev.get("urgent") else 0)
-    return max(5, min(99, round(v))), min(100, round(n / 15 * 100)), n
+    # comptes TikTok d'actu (bot viral, 48 h) qui ont fait une vidéo sur le même sujet
+    tt = 0
+    f = ICI / "donnees" / "viral.json"
+    if f.exists():
+        ma = mots(" ".join(x["titre"] for x in ev["articles"][:6]) + " " + (a.get("titre") or ""))
+        lim = maintenant() - 48 * 3600
+        vids = [x for x in json.loads(f.read_text(encoding="utf-8-sig")).get("videos", {}).values() if x.get("compte") and x.get("ts", 0) >= lim]
+        df, seuil = rarete([x.get("titre", "") for x in vids])
+        tt = len({x["compte"] for x in vids if meme_sujet(ma, x.get("titre", ""), df, seuil)})
+    return max(5, min(99, round(v))), min(100, round((n + tt) / 15 * 100)), n, tt
 
 
 def est_urgent(ev):
@@ -321,7 +344,7 @@ def alerter(ev):
         ev["videos_yt"] = recherche_youtube(ev)[:4]  # vraies vidéos YouTube récentes sur le sujet (clé gratuite)
     except Exception as ex:
         print("  ! YouTube :", ex)
-    ev["pct_viral"], ev["pct_medias"], ev["nb_medias"] = pourcentages(ev)
+    ev["pct_viral"], ev["pct_medias"], ev["nb_medias"], ev["nb_tiktok"] = pourcentages(ev)
     msg = tg.texte_alerte(ev)
     if ESSAI:
         print("\n" + "=" * 70 + "\n" + re.sub(r"<[^>]+>", "", msg))
