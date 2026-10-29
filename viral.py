@@ -188,12 +188,18 @@ def main():
     cand.sort(key=lambda m: -m["note"])
     print(f"{len(mesures)} vidéos TikTok lues ({sum(1 for v in par_compte if v)}/{len(comptes)} comptes ce tour, {len(set(config.COMPTES_TIKTOK))} au total), {len(cand)} candidates")
     envoyees = 0
-    for m in cand[:2 if premier else 4]:
-        mem = etat["videos"][m["id"]]
+    choisies = cand[:2 if premier else 4]
+
+    def analyse_sure(m):
         try:
-            a = analyser(m) if ia.CLE else None
+            return analyser(m) if ia.CLE else None
         except Exception as ex:
-            print("  ! IA :", ex); a = None
+            print("  ! IA :", ex); return None
+
+    with ThreadPoolExecutor(4) as p:  # les analyses IA en même temps (le tour cloud doit rester < 60 s)
+        analyses = list(p.map(analyse_sure, choisies))
+    for m, a in zip(choisies, analyses):
+        mem = etat["videos"][m["id"]]
         mem.update(mesure=m, analyse=a)
         print(f"  {m['note']:4.1f} | actu={(a or {}).get('actualite')} | {fmt(m['vitesse'])}/h | {m['chaine']} | {m['titre'][:60]}")
         if a and not a.get("actualite"):
