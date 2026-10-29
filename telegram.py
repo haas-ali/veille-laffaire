@@ -32,11 +32,23 @@ def boutons(eid):
                                  {"text": "✖️ IGNORER", "callback_data": f"ign:{eid}"}]]}
 
 
+def niveau(ev):
+    """Code couleur : 🔴 actu très importante (urgente ou 8-10/10), 🟢 moyenne (7/10), 🟡 faible (6/10 ou moins)."""
+    note = (ev.get("analyse") or {}).get("score_tiktok")
+    if ev.get("urgent"):
+        return "🔴🔴🔴 <b>ACTU URGENTE</b> 🔴🔴🔴"
+    if note is not None and note >= 8:
+        return "🔴 <b>ACTU TRÈS IMPORTANTE</b>"
+    if note is not None and note >= 7:
+        return "🟢 <b>Actu moyenne</b>"
+    return "🟡 <b>Actu faible</b>"
+
+
 def texte_alerte(ev):
     a = ev.get("analyse") or {}
     note = a.get("score_tiktok")
-    t = ["🔴🚨 <b>ACTU URGENTE</b> 🚨🔴\n"] if ev.get("urgent") else []
-    t.append(f"{'‼️' if ev.get('urgent') else '🚨'} <b>{e(a.get('titre') or ev['articles'][0]['titre'])}</b>")
+    t = [niveau(ev) + "\n"]
+    t.append(f"{'‼️' if ev.get('urgent') else '📰'} <b>{e(a.get('titre') or ev['articles'][0]['titre'])}</b>")
     t.append(f"Potentiel TikTok : <b>{note}/10</b>" if note is not None else f"(sans analyse IA — score mots-clés {ev['score']:.0f})")
     lieu = " · ".join(x for x in [a.get("lieu") and f"📍 {e(a['lieu'])}", a.get("heure") and f"🕒 {e(a['heure'])}"] if x)
     if lieu:
