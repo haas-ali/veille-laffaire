@@ -51,16 +51,21 @@ def telecharger(lien, dossier):
     """Vidéo en 720p max (assez pour l'analyse, et < 20 Mo pour l'envoyer directement à Gemini)."""
     sortie = Path(dossier) / "v.mp4"
     t = time.time()
-    try:
-        r = subprocess.run(["yt-dlp", "-q", "--no-warnings", "--no-part", "-S", "res:720,ext:mp4", "--max-filesize", "19M", "-o", str(sortie), lien],
-                           capture_output=True, text=True, errors="replace", timeout=max(3, reste() - 18))  # garder ~18 s pour Gemini
+    try:  # --print de la légende COMPLÈTE (celle de la liste est coupée « ... ») dans le même appel que le téléchargement
+        r = subprocess.run(["yt-dlp", "-q", "--no-warnings", "--no-part", "--encoding", "utf-8", "--no-simulate", "--print", "%(description)s",
+                            "-S", "res:720,ext:mp4", "--max-filesize", "19M", "-o", str(sortie), lien],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=max(3, reste() - 18))  # ~18 s pour Gemini
     except subprocess.TimeoutExpired:
         taille = sortie.stat().st_size / 1e6 if sortie.exists() else 0
-        print(f"  ! téléchargement trop lent ({time.time() - t:.0f} s, {taille:.1f} Mo reçus)"); return None
+        print(f"  ! téléchargement trop lent ({time.time() - t:.0f} s, {taille:.1f} Mo reçus)"); return None, None
     if not (sortie.exists() and sortie.stat().st_size > 0):
-        print("  ! téléchargement :", (r.stderr or "").strip()[-200:]); return None
+        print("  ! téléchargement :", (r.stderr or "").strip()[-200:]); return None, None
     print(f"  téléchargé en {time.time() - t:.1f} s ({sortie.stat().st_size / 1e6:.1f} Mo)")
-    return sortie
+    return sortie, (r.stdout or "").strip()
+
+
+def hashtags(texte):
+    return list(dict.fromkeys(re.findall(r"#[\wÀ-ɏ]+", texte or "")))
 
 
 def mesurer_plans(fichier):
@@ -78,13 +83,17 @@ def mesurer_plans(fichier):
 
 PROMPT = """Tu analyses une vidéo TikTok d'actualité du compte @{compte} pour le créateur « L'Affaire » (@laffaire_france), qui veut comprendre
 COMMENT cette vidéo retient les gens jusqu'au bout, pour s'en INSPIRER (pas la recopier).
-Légende : {titre}
+Légende complète : {titre}
 Chiffres : {vues} vues, {likes} likes, {com} commentaires, {partages} partages. Mesure automatique : {plans} plans en {duree} s.
+Décris les PROCÉDÉS (réutilisables sur n'importe quel sujet) ; ne recopie pas leur texte : au plus une courte expression type quand c'est utile.
 
 Regarde et écoute TOUTE la vidéo. Décris seulement ce que tu vois et entends vraiment (si tu n'es pas sûr, dis-le). Réponds en français avec ce JSON :
 {{"sujet": "1 phrase",
 "accroche_3s": {{"dit": "phrase exacte dite au début ou null", "ecrit": "texte à l'écran au début ou null", "image": "ce qu'on voit", "pourquoi_ca_accroche": "..."}},
 "structure": [{{"t": "0-3 s", "quoi": "étape du récit + procédé (révélation, question, chiffre choc, image forte…)"}}],
+"recit": "comment l'histoire est racontée : par quoi ça commence (le fait nouveau ? le contexte ?), ordre des informations, quand arrivent le contexte, les sources, les réactions, qui parle",
+"mots": "comment ils utilisent les mots : longueur des phrases, temps des verbes, mots forts ou émotionnels, chiffres, tournures qui reviennent, ton",
+"images": "comment les images servent le récit : quelle image pendant quel moment du texte, vraies vidéos, visages, preuves (captures, documents), cartes, photos, ordre des plans",
 "rythme": "vitesse des plans, zooms, coupes, arrêts sur image, effets",
 "textes_ecran": "titre, sous-titres (mot à mot ? couleurs ? position ? mots surlignés ?), logos",
 "voix_son": "voix (humaine/IA, ton, débit), musique, bruitages, son d'origine des vidéos",
@@ -101,7 +110,7 @@ def demander_gemini(fichier, m):
         return None
     data = base64.b64encode(Path(fichier).read_bytes()).decode()
     corps = {"contents": [{"parts": [{"inline_data": {"mime_type": "video/mp4", "data": data}},
-                                     {"text": PROMPT.format(compte=m["compte"], titre=m["titre"], vues=m["vues"], likes=m["likes"],
+                                     {"text": PROMPT.format(compte=m["compte"], titre=m.get("description") or m["titre"], vues=m["vues"], likes=m["likes"],
                                                             com=m["com"], partages=m["partages"], plans=m.get("plans") or "?",
                                                             duree=round(m.get("duree") or 0))}]}],
              "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json"}}
@@ -122,9 +131,11 @@ def demander_gemini(fichier, m):
 
 def analyser(m):
     with tempfile.TemporaryDirectory() as d:
-        f = telecharger(m["lien"], d)
+        f, desc = telecharger(m["lien"], d)
         if not f:
             return None
+        if desc and desc != "NA":
+            m["description"], m["hashtags"] = desc, hashtags(desc)
         plans, duree = mesurer_plans(f)  # ~2 s (image réduite), donné ensuite à Gemini
         m["plans"], m["duree"] = plans, m.get("duree") or duree  # durée TikTok d'abord (ffmpeg se trompe parfois : 245 s pour 95 s)
         return demander_gemini(f, m)
@@ -189,6 +200,9 @@ def texte_fiche(m, a):
          + (f"\n🔤 écrit : {e(acc.get('ecrit'))}" if acc.get("ecrit") else "") + f"\n🖼️ {e(acc.get('image'))}\n💡 {e(acc.get('pourquoi_ca_accroche'))}"]
     if a.get("structure"):
         t.append("\n🧱 <b>Structure</b>\n" + "\n".join(f"• <b>{e(s.get('t'))}</b> {e(s.get('quoi'))}" for s in a["structure"][:8]))
+    for cle, titre in (("recit", "📖 <b>Récit :</b>"), ("mots", "🗣️ <b>Les mots :</b>"), ("images", "🖼️ <b>Les images :</b>")):
+        if a.get(cle):
+            t.append(f"\n{titre} {e(a[cle])}")
     t += [f"\n✂️ <b>Rythme :</b> {e(a.get('rythme'))}", f"🔤 <b>Textes :</b> {e(a.get('textes_ecran'))}",
           f"🎙️ <b>Voix / son :</b> {e(a.get('voix_son'))}", f"🔚 <b>Fin :</b> {e(a.get('fin'))}"]
     if a.get("suspense"):
@@ -199,6 +213,9 @@ def texte_fiche(m, a):
         t.append("\n✅ <b>À reprendre pour L'Affaire</b>\n" + l(a["a_reprendre"]))
     if a.get("a_eviter"):
         t.append("❌ <b>À éviter</b>\n" + l(a["a_eviter"]))
+    tags = m.get("hashtags") or []
+    if tags:  # en premier dans le message : il est coupé à 4000 caractères, les hashtags ne doivent jamais sauter
+        t.insert(1, f"🏷️ <b>Leurs hashtags</b> (appuie pour copier) :\n<code>{e(' '.join(tags + ['#laffaire_france']))}</code>")
     return tg.assembler(t)
 
 
@@ -348,7 +365,33 @@ def chien_de_garde():
     t.start()
 
 
+def fiche_enregistree(lien):
+    """La fiche déjà faite pour cette vidéo (état du cloud, branche etat), avec hashtags et légende complète. None si absente."""
+    vid = re.search(r"/video/(\d+)", lien)
+    if not vid:
+        return None
+    # sur le PC, copier d'abord l'état du cloud (le Python du Microsoft Store ne voit pas le git portable) :
+    # git fetch -q origin etat --depth=1; git show origin/etat:espion.json | Out-File -Encoding utf8 donnees\espion.json
+    if not ETAT.exists():
+        print("donnees/espion.json absent : récupère d'abord l'état du cloud (voir commentaire de fiche_enregistree)")
+        return None
+    return json.loads(ETAT.read_text(encoding="utf-8-sig"))["videos"].get(vid[1])
+
+
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["--fiche"]:  # python espion.py --fiche <lien> : la fiche à appliquer quand l'utilisateur colle une demande
+        BUDGET = 600
+        x = fiche_enregistree(sys.argv[2])
+        if x and not x.get("hashtags"):  # vieilles fiches : légende complète relue en direct
+            r = subprocess.run(["yt-dlp", "--encoding", "utf-8", "--skip-download", "--print", "%(description)s", sys.argv[2]],
+                               capture_output=True, text=True, encoding="utf-8", errors="replace")
+            x["description"] = r.stdout.strip(); x["hashtags"] = hashtags(x["description"])
+        if not x or not x.get("analyse"):
+            print("Pas de fiche enregistrée pour cette vidéo : lance  python espion.py --analyser <lien>")
+        else:
+            print(re.sub(r"<[^>]+>", "", texte_fiche(x, x["analyse"])))
+            print("\nLÉGENDE COMPLÈTE (pour les faits, ne pas recopier) :\n" + (x.get("description") or x["titre"]))
+        raise SystemExit
     if sys.argv[1:2] == ["--analyser"]:  # python espion.py --analyser <lien TikTok> : fiche d'une vidéo, sans limite de temps
         BUDGET = 600
         u = sys.argv[2]
