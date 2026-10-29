@@ -101,7 +101,11 @@ SEUIL_URGENT = 7         # note IA minimale pour une actu urgente
 
 # Bot viral : comptes TikTok d'actualité FR surveillés (lisibles avec yt-dlp, testés le 29/10/2026)
 COMPTES_TIKTOK = ["actuchrono60", "hugodecrypte", "brutofficiel", "konbini", "lemondefr", "franceinfo", "bfmtv", "leparisien",
-                  "cnews", "tf1info", "loopsider", "ouestfrance", "europe1"]
+                  "cnews", "tf1info", "loopsider", "ouestfrance", "europe1",
+                  # comptes d'actu suivis par @laffaire_france (relevés le 29/10/2026)
+                  "minutepeople.fr", "minute.politique.2027", "le.pouls2", "micronuit", "politiquepixels", "20minutesfrance", "rudy.actu",
+                  "ajplusfrancais", "tesprevenu", "lejournal.actu", "souley_28", "rtsinfo", "mathildepanot", "captelinfo", "bonnequestion.tv",
+                  "quotidienofficiel", "jeunessedanslarue", "afpfr", "unmomentactu", "infofrance.tv"]
 
 SEUIL_ANALYSE = 5.0      # score mots-clés à partir duquel on demande l'avis de l'IA
 SEUIL_NOTIF_IA = 6       # note TikTok (sur 10) minimale pour envoyer une alerte
