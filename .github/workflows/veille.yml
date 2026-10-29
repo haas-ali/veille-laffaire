@@ -27,6 +27,7 @@ jobs:
         run: |
           mkdir -p donnees
           git fetch origin etat --depth=1 && git show origin/etat:etat.json > donnees/etat.json || echo "premier tour"
+          git show origin/etat:viral.json > donnees/viral.json 2>/dev/null || rm -f donnees/viral.json
       - name: Tour de veille
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
@@ -34,12 +35,20 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: python veille.py
+      - name: Bot viral
+        if: always()
+        env:
+          TELEGRAM_TOKEN_VIRAL: ${{ secrets.TELEGRAM_TOKEN_VIRAL }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: python viral.py
       - name: Enregistrer l'état (écrase la branche, sans historique)
         if: always()
         run: |
           [ -s donnees/etat.json ] || exit 0
-          d=$(mktemp -d); cp donnees/etat.json "$d/"; cd "$d"
-          git init -q -b etat; git add etat.json
+          d=$(mktemp -d); cp donnees/etat.json "$d/"; [ -f donnees/viral.json ] && cp donnees/viral.json "$d/"; cd "$d"
+          git init -q -b etat; git add *.json
           git -c user.name=veille-bot -c user.email=veille-bot@users.noreply.github.com commit -qm etat
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" etat
       - name: Enregistrer les dossiers préparés
