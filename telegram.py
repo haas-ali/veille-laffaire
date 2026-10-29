@@ -130,6 +130,33 @@ if __name__ == "__main__":
     if sys.argv[1:2] == ["--message"]:  # utilise par la tache automatique du PC : python telegram.py --message "texte"
         envoyer(e(" ".join(sys.argv[2:])))
         raise SystemExit
+    if sys.argv[1:2] == ["--video"]:  # python telegram.py --video <mp4> [miniature.png] : envoie la video (allegee si > 49 Mo, limite des bots)
+        import subprocess, tempfile
+        mp4 = sys.argv[2]
+        if os.path.getsize(mp4) > 49e6:
+            dur = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", mp4], capture_output=True, text=True).stdout)
+            kbps = int(47e6 * 8 / dur / 1000) - 192  # taille visee ~47 Mo, audio 192 k
+            tmp = os.path.join(tempfile.gettempdir(), "telegram_" + os.path.basename(mp4))
+            log = os.path.join(tempfile.gettempdir(), "tg2pass")
+            base = ["ffmpeg", "-v", "error", "-y", "-i", mp4, "-c:v", "libx264", "-preset", "slow", "-b:v", f"{kbps}k", "-passlogfile", log]
+            subprocess.run(base + ["-pass", "1", "-an", "-f", "null", os.devnull], check=True)
+            subprocess.run(base + ["-pass", "2", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", tmp], check=True)
+            mp4 = tmp
+        fichiers = {"video": open(mp4, "rb")}
+        if len(sys.argv) > 3:  # miniature en apercu (Telegram veut un JPEG <= 320 px)
+            vign = os.path.join(tempfile.gettempdir(), "tg_vignette.jpg")
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", sys.argv[3], "-vf", "scale=-2:320", vign], check=True)
+            fichiers["thumbnail"] = open(vign, "rb")
+        api("sendVideo", fichiers=fichiers, chat_id=CHAT, supports_streaming="true", width=1080, height=1920,
+            caption=f"🎬 {os.path.basename(sys.argv[2])} ({os.path.getsize(mp4) / 1e6:.0f} Mo)")
+        if len(sys.argv) > 3:
+            with open(sys.argv[3], "rb") as f:
+                api("sendDocument", fichiers={"document": f}, chat_id=CHAT, caption="🖼️ Miniature")
+        for f in fichiers.values():
+            f.close()
+        if mp4 != sys.argv[2]:
+            os.remove(mp4)  # version allegee temporaire
+        raise SystemExit
     if sys.argv[1:2] == ["--pret"]:  # python telegram.py --pret description_tiktok.txt "texte d'en-tete"
         desc = open(sys.argv[2], encoding="utf-8").read().strip()
         envoyer(f"{e(' '.join(sys.argv[3:]))}\n\n📋 <b>Description à copier</b> (appuie dessus pour copier) :\n<pre>{e(desc)}</pre>"[:4000])
