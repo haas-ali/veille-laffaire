@@ -157,13 +157,20 @@ def deja_traite(m, etat):
     return sorted({x["compte"] for x in autres if V.meme_sujet(ma, x["titre"] + " " + (x.get("sujet") or ""), df, seuil)})
 
 
+def heure(ts):
+    """« à 14 h 32 » aujourd'hui, « hier à 23 h 05 », sinon « le 27/10 à 9 h 10 » (heure de Paris)."""
+    d, auj = datetime.fromtimestamp(ts, V.PARIS), datetime.now(V.PARIS).date()
+    h = f"à {d.hour} h {d.minute:02d}"
+    return h if d.date() == auj else f"hier {h}" if (auj - d.date()).days == 1 else f"le {d:%d/%m} {h}"
+
+
 def texte_alerte(m):
     e = tg.e
     t = [f"🔔 <b>@{e(m['compte'])} vient de poster</b>"]
     if m.get("sujet"):
         t.append(f"\n📰 <b>Sujet : {e(m['sujet'])}</b>")
     t.append(f"\n🎥 {e(m['titre'][:200])}")
-    t.append(f"⏱️ postée il y a {(time.time() - m['ts']) / 60:.0f} min · {m.get('duree') or '?'} s · 👀 {fmt(m['vues'])} vues")
+    t.append(f"⏱️ postée {heure(m['ts'])} · {m.get('duree') or '?'} s · 👀 {fmt(m['vues'])} vues")
     if m.get("aussi") is not None:
         t.append("👥 Déjà traité par : " + ", ".join("@" + e(c) for c in m["aussi"]) if m["aussi"]
                  else "🆕 Aucun de tes autres comptes observés n'en a parlé")
