@@ -105,7 +105,19 @@ COMPTES_TIKTOK = ["actuchrono60", "hugodecrypte", "brutofficiel", "konbini", "le
                   # comptes d'actu suivis par @laffaire_france (relevés le 29/10/2026)
                   "minutepeople.fr", "minute.politique.2027", "le.pouls2", "micronuit", "politiquepixels", "20minutesfrance", "rudy.actu",
                   "ajplusfrancais", "tesprevenu", "lejournal.actu", "souley_28", "rtsinfo", "mathildepanot", "captelinfo", "bonnequestion.tv",
-                  "quotidienofficiel", "jeunessedanslarue", "afpfr", "unmomentactu", "infofrance.tv"]
+                  "quotidienofficiel", "jeunessedanslarue", "afpfr", "unmomentactu", "infofrance.tv",
+                  # suite des abonnements (captures du 29/10/2026, identifiants retrouvés par la recherche TikTok)
+                  "la.derniereinfo", "alerte.min", "lavoixdunord", "actu24h00", "le_progres_", "info.direct44", "france24actu", "usabrief0",
+                  "actudivers.fr", "noahdecrypte", "france24infos", "actuenbref.tv", "le20hfrancetelevisions", "ladepechedumidi", "f3cvdl",
+                  "faisdivers.fr", "actufrance_33", "lestrepublicain", "parismatch", "m6info_", "larochesuryonactu", "lejournal.actu2",
+                  "franceecho", "faits.divers.fr5", "journalsudouest", "journalfrancetv", "raison.patriote", "lehuffpostfr", "nextenews",
+                  "laprovence_", "20minutesonline", "kat_info", "newo.telop", "lefigaro", "mediapartfr", "lepointactuu", "tera24_24",
+                  "actuone.tv1", "tiktok.ragot", "infoexpress35", "actuexpress23", "france3nouvelleaquitaine", "france3grandest",
+                  "streetpress_", "midilibre", "infoglobale.media", "stupmedia", "flashinfosoff", "ostor227", "actufrance14", "flash_actu24",
+                  "lesignal.actu", "reclist", "zoomdefrance", "askyp.france", "letiktokinfo", "josselin.journaliste", "actucru",
+                  "actunowtv", "tera24_usa", "tera24_england"]
+# pour garder le tour cloud sous 60 s, chaque tour lit une moitié des comptes (en alternance) : chaque compte est lu toutes les heures
+MOITIE_PAR_TOUR = True
 
 SEUIL_ANALYSE = 5.0      # score mots-clés à partir duquel on demande l'avis de l'IA
 SEUIL_NOTIF_IA = 6       # note TikTok (sur 10) minimale pour envoyer une alerte

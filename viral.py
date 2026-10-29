@@ -172,8 +172,12 @@ def main():
     etat["videos"] = {k: v for k, v in etat["videos"].items() if k.isdigit() or "mesure" not in v}  # oublie l'ancienne version YouTube
     premier = not etat["videos"]
     traiter_clics(etat)
-    with ThreadPoolExecutor(len(config.COMPTES_TIKTOK)) as p:
-        par_compte = list(p.map(lire_compte, config.COMPTES_TIKTOK))
+    comptes = list(dict.fromkeys(config.COMPTES_TIKTOK))
+    if config.MOITIE_PAR_TOUR:  # une moitié par tour, en alternance (heure paire/impaire de la demi-heure)
+        moitie = int(time.time() // 1800) % 2
+        comptes = comptes[moitie::2]
+    with ThreadPoolExecutor(24) as p:
+        par_compte = list(p.map(lire_compte, comptes))
     mesures = []
     for vids in par_compte:
         anciennes = [int(v["view_count"]) for v in vids if time.time() - v["timestamp"] > 12 * 3600]  # référence : vidéos déjà « mûres »
@@ -182,7 +186,7 @@ def main():
     cand = [m for m in mesures if m["age"] <= 36 and m["vues"] >= 50000 and m["note"] >= 5
             and ((m["ratio"] or 0) >= 2 or m["vitesse"] >= 20000) and not etat["videos"][m["id"]].get("alerte")]
     cand.sort(key=lambda m: -m["note"])
-    print(f"{len(mesures)} vidéos TikTok lues ({sum(1 for v in par_compte if v)}/{len(config.COMPTES_TIKTOK)} comptes), {len(cand)} candidates")
+    print(f"{len(mesures)} vidéos TikTok lues ({sum(1 for v in par_compte if v)}/{len(comptes)} comptes ce tour, {len(set(config.COMPTES_TIKTOK))} au total), {len(cand)} candidates")
     envoyees = 0
     for m in cand[:2 if premier else 4]:
         mem = etat["videos"][m["id"]]
