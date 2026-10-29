@@ -33,14 +33,14 @@ def boutons(eid):
 
 
 def niveau(ev):
-    """Code couleur : 🔴 urgente, 🟩 très importante (8-10/10, « vert foncé »), 🟢 moyenne (7/10), 🟡 faible (6/10 ou moins)."""
+    """Code couleur : 🔴 urgente, 🔴 très importante (8-10/10), 🟠 moyenne (7/10), 🟡 faible (6/10 ou moins)."""
     note = (ev.get("analyse") or {}).get("score_tiktok")
     if ev.get("urgent"):
         return "🔴🔴🔴 <b>ACTU URGENTE</b> 🔴🔴🔴"
     if note is not None and note >= 8:
-        return "🟩🟩 <b>ACTU TRÈS IMPORTANTE</b> 🟩🟩"
+        return "🔴 <b>ACTU TRÈS IMPORTANTE</b>"
     if note is not None and note >= 7:
-        return "🟢 <b>Actu moyenne</b>"
+        return "🟠 <b>Actu moyenne</b>"
     return "🟡 <b>Actu faible</b>"
 
 
