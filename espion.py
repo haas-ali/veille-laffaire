@@ -48,9 +48,17 @@ def lire_compte(compte):
 def telecharger(lien, dossier):
     """Vidéo en 720p max (assez pour l'analyse, et < 20 Mo pour l'envoyer directement à Gemini)."""
     sortie = Path(dossier) / "v.mp4"
-    subprocess.run(["yt-dlp", "-q", "--no-warnings", "-S", "res:720,ext:mp4", "--max-filesize", "19M", "-o", str(sortie), lien],
-                   capture_output=True, timeout=max(5, reste()))
-    return sortie if sortie.exists() and sortie.stat().st_size > 0 else None
+    t = time.time()
+    try:
+        r = subprocess.run(["yt-dlp", "-q", "--no-warnings", "--no-part", "-S", "res:720,ext:mp4", "--max-filesize", "19M", "-o", str(sortie), lien],
+                           capture_output=True, text=True, errors="replace", timeout=max(3, reste() - 18))  # garder ~18 s pour Gemini
+    except subprocess.TimeoutExpired:
+        taille = sortie.stat().st_size / 1e6 if sortie.exists() else 0
+        print(f"  ! téléchargement trop lent ({time.time() - t:.0f} s, {taille:.1f} Mo reçus)"); return None
+    if not (sortie.exists() and sortie.stat().st_size > 0):
+        print("  ! téléchargement :", (r.stderr or "").strip()[-200:]); return None
+    print(f"  téléchargé en {time.time() - t:.1f} s ({sortie.stat().st_size / 1e6:.1f} Mo)")
+    return sortie
 
 
 def mesurer_plans(fichier):
@@ -114,7 +122,7 @@ def analyser(m):
     with tempfile.TemporaryDirectory() as d:
         f = telecharger(m["lien"], d)
         if not f:
-            print("  ! téléchargement raté :", m["lien"]); return None
+            return None
         plans, duree = mesurer_plans(f)  # ~2 s (image réduite), donné ensuite à Gemini
         m["plans"], m["duree"] = plans, m.get("duree") or duree  # durée TikTok d'abord (ffmpeg se trompe parfois : 245 s pour 95 s)
         return demander_gemini(f, m)
