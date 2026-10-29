@@ -92,6 +92,13 @@ MOTS = {
            "programme tv", "quiz"],
 }
 
+# « ACTU URGENTE » : faits graves qui font le plus de vues (bandeau rouge, passe la nuit et le /seuil, pas la /pause)
+# mot entier, sauf ceux finissant par * (début de mot : racis* = raciste, racisme…)
+MOTS_URGENTS = ["attentat*", "attaque", "attaques", "terroris*", "meurtre*", "meurtri*", "tue", "tues", "tuee", "tuees", "assassin*", "poignard*",
+                "couteau", "fusillade*", "coups de feu", "crime", "crimes", "racis*", "antisemit*", "agression*", "viol", "viols", "enlevement*",
+                "otage*", "emeute*", "lynch*", "egorge*", "decapit*", "explosion*", "massacre*"]
+SEUIL_URGENT = 7         # note IA minimale pour une actu urgente
+
 SEUIL_ANALYSE = 5.0      # score mots-clés à partir duquel on demande l'avis de l'IA
 SEUIL_NOTIF_IA = 6       # note TikTok (sur 10) minimale pour envoyer une alerte
 SEUIL_NOTIF_SANS_IA = 9  # si pas de clé IA : score mots-clés minimal pour alerter

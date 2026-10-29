@@ -286,6 +286,16 @@ except Exception:  # Windows sans base des fuseaux : heure d'hiver
     HEURE_PARIS = lambda: datetime.now(PARIS)
 
 
+def est_urgent(ev):
+    """Actu grave qui fait beaucoup de vues : l'IA le dit, ou les titres contiennent un mot grave (attentat, meurtre, racisme…)."""
+    a = ev.get("analyse") or {}
+    if (a.get("score_tiktok") or 0) < config.SEUIL_URGENT or a.get("zone") == "Monde":
+        return False
+    texte = " " + sans_accent(" ".join(x["titre"] for x in ev["articles"][:10])) + " "
+    mots = any(re.search(r"(?<![a-z])" + re.escape(m.rstrip("*")) + ("" if m.endswith("*") else r"(?![a-z])"), texte) for m in config.MOTS_URGENTS)
+    return bool(a.get("urgent")) or mots
+
+
 def seuil_actuel(etat):
     """Note minimale pour alerter : /pause coupe tout, la nuit (0 h-7 h) seuls les 9-10/10 passent, sinon le /seuil choisi."""
     if etat.get("pause"):
@@ -364,7 +374,8 @@ def traiter_alertes(etat, touches, premier_tour):
             if isinstance(d, int) and 0 <= d < len(deja) and len(signature(ev) & signature(deja[d])) >= 2:  # l'IA doit être confirmée par des mots communs
                 ev["notifie"] = True  # même fait qu'une alerte déjà envoyée : pas de nouvelle alerte
                 ev["doublon_de"] = deja[d]["id"]
-            elif note >= seuil_actuel(etat):
+            elif note >= seuil_actuel(etat) or (est_urgent(ev) and not etat.get("pause")):
+                ev["urgent"] = est_urgent(ev)
                 alerter(ev); ev["notifie"] = True
         elif not ia.CLE and ev["score"] >= config.SEUIL_NOTIF_SANS_IA:
             alerter(ev); ev["notifie"] = True; ev["analyses"] = 3

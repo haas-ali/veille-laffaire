@@ -35,7 +35,8 @@ def boutons(eid):
 def texte_alerte(ev):
     a = ev.get("analyse") or {}
     note = a.get("score_tiktok")
-    t = [f"🚨 <b>{e(a.get('titre') or ev['articles'][0]['titre'])}</b>"]
+    t = ["🔴🚨 <b>ACTU URGENTE</b> 🚨🔴\n"] if ev.get("urgent") else []
+    t.append(f"{'‼️' if ev.get('urgent') else '🚨'} <b>{e(a.get('titre') or ev['articles'][0]['titre'])}</b>")
     t.append(f"Potentiel TikTok : <b>{note}/10</b>" if note is not None else f"(sans analyse IA — score mots-clés {ev['score']:.0f})")
     lieu = " · ".join(x for x in [a.get("lieu") and f"📍 {e(a['lieu'])}", a.get("heure") and f"🕒 {e(a['heure'])}"] if x)
     if lieu:

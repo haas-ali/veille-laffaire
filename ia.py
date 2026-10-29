@@ -90,6 +90,7 @@ Alertes déjà envoyées ces dernières 24 h :
 
 Réponds avec ce JSON :
 {{"doublon_de": numéro de l'alerte déjà envoyée qui raconte EXACTEMENT le même fait (pas un nouveau rebondissement) ou null,
+"urgent": true si c'est une actu grave qui fait énormément de vues (attaque, attentat, meurtre, crime, agression raciste ou antisémite, fusillade, prise d'otages, émeute, enlèvement, viol, terrorisme, catastrophe meurtrière) et qui touche beaucoup de monde en France, sinon false,
 "titre": "titre factuel court", "nouveau": "ce qui est nouveau dans les dernières heures, ou null si rien", "resume": "3 phrases maximum", "lieu": "ville, pays ou null", "heure": "date/heure de l'événement ou null",
 "zone": "France" ou "Europe" ou "Monde", "categorie": "fait divers|accident|catastrophe|politique|insolite|celebrite|international|autre",
 "faits_confirmes": ["..."], "incertain": ["..."], "score_tiktok": 0-10, "raison_score": "1 phrase",
