@@ -2,7 +2,7 @@
 puis l'IA (Gemini) REGARDE la vidéo et explique comment elle retient les gens : accroche des 3 premières secondes, rythme des plans,
 textes à l'écran, structure / suspense, voix et son, fin. Le nombre de coupes est mesuré pour de vrai (ffmpeg, détection de plans).
 Le dimanche à 20 h : bilan des méthodes communes aux vidéos qui ont le plus marché. But : s'INSPIRER des méthodes, jamais recopier.
-Lancé en même temps que viral.py (le tour cloud doit rester < 60 s) : budget de temps limité, ce qui n'est pas fini repart au tour suivant.
+Lancé en même temps que veille.py puis viral.py (le tour cloud doit rester < 60 s) : budget de temps limité, ce qui n'est pas fini repart au tour suivant.
 Options : --essai (affiche sans envoyer ni enregistrer), --bilan (envoie le bilan tout de suite), --analyser <url> (fiche d'une vidéo)."""
 import base64, json, os, re, subprocess, sys, tempfile, time
 from concurrent.futures import ThreadPoolExecutor
@@ -17,7 +17,7 @@ ESSAI = "--essai" in sys.argv
 ETAT = V.ICI / "donnees" / "espion.json"
 CHAMPS = "%(.{id,view_count,like_count,comment_count,repost_count,timestamp,title,duration})j"
 DEBUT = time.time()
-BUDGET = 30  # secondes par tour (viral.py dure ~32 s en parallèle) ; téléchargement ~3 s + plans ~2 s + Gemini 14-20 s
+BUDGET = 38  # secondes par tour (veille.py + viral.py ≈ 40 s en parallèle) ; lecture ~4 s + téléchargement ~3 s + plans ~2 s + Gemini 14-20 s
 MODELES_VIDEO = ["gemini-3.5-flash", "gemini-flash-lite-latest"]
 
 tg.TOKEN = os.environ.get("TELEGRAM_TOKEN_VIRAL", "").strip()

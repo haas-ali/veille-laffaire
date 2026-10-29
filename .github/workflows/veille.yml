@@ -30,25 +30,21 @@ jobs:
           git show origin/etat:viral.json > donnees/viral.json 2>/dev/null || rm -f donnees/viral.json
           git show origin/etat:suivi.json > donnees/suivi.json 2>/dev/null || rm -f donnees/suivi.json
           git show origin/etat:espion.json > donnees/espion.json 2>/dev/null || rm -f donnees/espion.json
-      - name: Tour de veille
+      - name: Veille + bot viral + observateur
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-        run: python veille.py
-      - name: Bot viral
-        if: always()
-        env:
           TELEGRAM_TOKEN_VIRAL: ${{ secrets.TELEGRAM_TOKEN_VIRAL }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-        # espion.py (comptes observés + analyse de leur méthode) tourne EN MÊME TEMPS que viral.py : le tour reste < 60 s
+        # espion.py (comptes observés + analyse de leur méthode) tourne EN MÊME TEMPS que veille.py puis viral.py : il lit ses
+        # 6 comptes TikTok pendant veille.py (qui ne touche pas TikTok), puis télécharge et fait analyser : le tour reste < 60 s
         run: |
           python espion.py > espion.log 2>&1 &
+          e=$!
+          python veille.py || r=$?
           python viral.py || r=$?
-          wait $! || echo "espion en échec"
+          wait $e || echo "espion en échec"
           cat espion.log
           exit ${r:-0}
       - name: Suivi de mes vidéos + meilleures heures
