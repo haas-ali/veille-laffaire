@@ -24,9 +24,49 @@ def api(methode, fichiers=None, **params):
     return j["result"]
 
 
-def bouton_copier(texte):
-    """Copie le texte dans le presse-papiers du téléphone dès l'appui (sans attendre le prochain tour), à coller ensuite dans Claude."""
-    return {"text": "📋 Copier pour Claude", "copy_text": {"text": texte[:256]}}
+def bouton_copier(texte, libelle="📋 Copier pour Claude"):
+    """Copie le texte dans le presse-papiers du téléphone dès l'appui (sans attendre le prochain tour), à coller ensuite dans Claude.
+    Bouton officiel « copy_text » (Bot API 7.11, nov. 2024) : 256 caractères au maximum."""
+    return {"text": libelle, "copy_text": {"text": texte[:256]}}
+
+
+def boutons_dernier(eid, copie):
+    """Bot « Dernière info » : exactement 5 boutons (Modèle 1 | 2 / Modèle 3 | 4 / Copier le texte)."""
+    m = lambda n: {"text": f"🎬 MODÈLE {n}", "callback_data": f"prep{n}:{eid}"}
+    return {"inline_keyboard": [[m(1), m(2)], [m(3), m(4)], [bouton_copier(copie, "📋 COPIER LE TEXTE")]]}
+
+
+def texte_dernier(ev):
+    """Format court du 29/10 (lisible sur téléphone). Aucun champ inventé : « inconnue » / « non applicable »."""
+    a = ev.get("analyse") or {}
+    import selection as S
+    rouge = ev.get("couleur") == "rouge"
+    titre = a.get("titre") or ev["articles"][0]["titre"]
+    maj = max(ev["articles"], key=lambda x: x["ts"])
+    sans_lieu = a.get("categorie") in ("createurs", "people") and not a.get("lieu")
+    t = [f"{'🔴' if rouge else '🟢'} <b>{e(titre)}</b>"]
+    if ev.get("rebond_de"):
+        t.append(f"🔄 <b>Rebondissement</b> (affaire déjà signalée : {e(ev['rebond_de'][:70])})")
+    t.append(f"📂 Catégorie : {S.CATEGORIES.get(a.get('categorie'), '📰 Actu').split(' ', 1)[1]}\n"
+             f"📅 Date des faits : {e(a.get('date_faits') or 'inconnue')}\n"
+             f"🕒 Heure des faits : {e(a.get('heure_faits') or 'inconnue')}\n"
+             f"📍 Lieu : {e(a.get('lieu') or ('non applicable' if sans_lieu else 'inconnu'))}\n"
+             f"📰 Dernière mise à jour : {e(maj['date'])} ({e(maj['source'])})\n"
+             f"🔥 Potentiel TikTok : <b>{ev.get('score100', '?')}/100</b> (estimation éditoriale)\n"
+             f"📈 Intérêt médiatique : {e(ev.get('interet') or 'inconnu')}\n"
+             f"✅ Fiabilité : {e(S.FIABILITE.get(ev.get('fiab'), 'En cours de vérification'))}")
+    t.append(f"\n<b>CE QUI S'EST PASSÉ</b>\n{e(a.get('resume') or titre)}")
+    if a.get("pourquoi"):
+        t.append(f"\n<b>POURQUOI ÇA PEUT MARCHER</b>\n{e(a['pourquoi'])}")
+    t.append(f"\n<b>NOUVEAUTÉ</b>\n{e(a.get('nouveaute') or a.get('nouveau') or 'première alerte sur ce sujet')}")
+    vus, lignes = set(), []
+    for x in sorted(ev["articles"], key=lambda x: -x["ts"]):
+        if x["source"] not in vus and len(lignes) < 4:
+            vus.add(x["source"]); lignes.append(f'• <a href="{e(x["lien"])}">{e(x["source"])}</a>')
+    for v in (ev.get("videos_yt") or [])[:1]:
+        lignes.append(f'• 🎥 <a href="{e(v["lien"])}">{e(v["chaine"])}</a>')
+    t.append("\n<b>SOURCES</b>\n" + "\n".join(lignes))
+    return assembler(t)
 
 
 def contexte(titre, lien, extra=""):
@@ -178,11 +218,11 @@ def repondre_clic(id_clic, texte):
         pass  # clic trop ancien (plus de 15 min) : sans gravité
 
 
-def marquer(message_id, etiquette):
-    """Remplace les boutons du message par un statut."""
+def marquer(message_id, etiquette, copie=None):
+    """Remplace les boutons du message par un statut (en gardant « Copier le texte » si fourni)."""
+    lignes = [[{"text": etiquette, "callback_data": "rien:0"}]] + ([[bouton_copier(copie, "📋 COPIER LE TEXTE")]] if copie else [])
     try:
-        api("editMessageReplyMarkup", chat_id=CHAT, message_id=message_id,
-            reply_markup={"inline_keyboard": [[{"text": etiquette, "callback_data": "rien:0"}]]})
+        api("editMessageReplyMarkup", chat_id=CHAT, message_id=message_id, reply_markup={"inline_keyboard": lignes})
     except RuntimeError:
         pass
 

@@ -73,9 +73,14 @@ def analyser(evenement, deja=(), gouts=""):
     lignes = "\n".join(f"- [{a['source']}] {a['titre']} — {a.get('resume', '')[:400]} ({a['date']})" for a in arts)
     premier = arts[0]["date"]
     deja_txt = "\n".join(f"{i}. {t}" for i, t in enumerate(deja)) or "aucune"
-    prompt = f"""Tu fais la veille d'actualité du compte TikTok « L'Affaire » (@laffaire_france) : faits divers, drames, accidents, catastrophes,
-politique, insolite, célébrités/rappeurs/youtubeurs dans une situation inattendue, sujets qui deviennent viraux. Priorité : France, puis Europe.
-Les vidéos qui marchent : « Terrible drame, … » / « On vient de l'apprendre, … » + « Voici ce que l'on sait. », récit chronologique sourcé, vraie vidéo virale du sujet à l'écran.
+    prompt = f"""Tu es l'éditeur du bot « Dernière info 🚨 » du compte TikTok « L'Affaire » (@laffaire_france). Question à trancher :
+« Cette info mérite-t-elle VRAIMENT une vidéo TikTok, ou faut-il l'ignorer ? » Mieux vaut 3 excellentes alertes que 30 inutiles.
+Ce qui intéresse : faits divers graves ou aux circonstances inhabituelles, POLÉMIQUES et scandales qui font réagir (propos, clashs,
+accusations et réponses), people/influenceurs (séparations, disputes, révélations, rebondissements), youtubeurs/streamers/gaming
+(grosse annonce, projet, sortie très attendue, polémique), manifestations/lois/décisions qui touchent les Français, et tout sujet
+inattendu qui s'emballe. Priorité France, puis Europe. À IGNORER (banal=true) : décès isolé ou accident ordinaire sans élément
+particulier, petite déclaration politique, simple désaccord, petite manif locale, simple nouvelle vidéo d'un créateur.
+Ne confonds jamais une accusation avec un fait établi ; un suspect n'est pas coupable avant une décision définitive.
 
 Voici les articles qui parlent du même événement, du plus ancien au plus récent (première info : {premier}) :
 {lignes}
@@ -91,8 +96,18 @@ Alertes déjà envoyées ces dernières 24 h :
 Réponds avec ce JSON :
 {{"doublon_de": numéro de l'alerte déjà envoyée qui raconte EXACTEMENT le même fait (pas un nouveau rebondissement) ou null,
 "urgent": true si c'est une actu grave qui fait énormément de vues (attaque, attentat, meurtre, crime, agression raciste ou antisémite, fusillade, prise d'otages, émeute, enlèvement, viol, terrorisme, catastrophe meurtrière) et qui touche beaucoup de monde en France, sinon false,
-"titre": "titre factuel court", "nouveau": "ce qui est nouveau dans les dernières heures, ou null si rien", "resume": "3 phrases maximum", "lieu": "ville, pays ou null", "heure": "date/heure de l'événement ou null",
-"zone": "France" ou "Europe" ou "Monde", "categorie": "fait divers|accident|catastrophe|politique|insolite|celebrite|international|autre",
+"titre": "titre factuel court (8 mots max)", "nouveau": "ce qui est nouveau dans les dernières heures, ou null si rien", "resume": "2 phrases maximum, mots simples",
+"lieu": "ville, région, pays ; null si sans objet (annonce d'un créateur…)", "heure": "date/heure de l'événement ou null",
+"date_faits": "JJ/MM ou null si inconnue", "heure_faits": "HH:MM ou null si inconnue",
+"personnes": ["noms propres des personnes concernées (personnalités, victimes nommées publiquement, suspects déjà nommés par les médias)"],
+"lieux": ["villes / lieux précis"],
+"zone": "France" ou "Europe" ou "Monde", "categorie": "fait divers|polemique|people|createurs|politique|international|catastrophe|insolite|autre",
+"sous_scores": {{"narratif": 0-10, "interet_public": 0-10, "visuels": 0-10, "explicable": 0-10}},
+"fiabilite": "confirme" (au moins 2 médias fiables ou source officielle) | "partiel" | "verification" (rumeur, une seule source, réseaux sociaux),
+"source_officielle": true si police/parquet/préfecture/ministère/la personne elle-même s'exprime, sinon false,
+"banal": true si sans intérêt particulier (voir À IGNORER), "exceptionnel": true seulement pour un événement urgent et exceptionnel en France (attentat, catastrophe meurtrière, fait d'une ampleur nationale) — jamais pour attirer l'attention,
+"rebondissement_majeur": true si les articles récents apportent un fait nouveau MAJEUR (arrestation, aveu, preuve, réponse officielle, décision de justice), sinon false,
+"pourquoi": "1 phrase : pourquoi ça peut marcher sur TikTok", "nouveaute": "1 phrase : pourquoi alerter MAINTENANT",
 "faits_confirmes": ["..."], "incertain": ["..."], "score_tiktok": 0-10, "raison_score": "1 phrase",
 "angle": "angle de vidéo pour L'Affaire en 1-2 phrases", "accroche": "1re phrase de la voix off", "recherche_video": ["2 ou 3 requêtes pour trouver la vidéo originale sur TikTok/X/YouTube"]}}
 Barème score_tiktok : 9-10 = choc national avec vidéo virale ; 7-8 = fort potentiel en France ; 5-6 = intéressant ; 0-4 = peu adapté (économie, sport ordinaire, international lointain)."""
@@ -113,16 +128,27 @@ Réponds UNIQUEMENT avec ce JSON :
     return appeler(prompt, recherche_web=True)
 
 
+STYLES_MODELES = {
+    1: "modèle n° 1 (prompt maître L'Affaire) : gros titre d'accroche, carte du lieu, schéma 3D si utile, question au public au milieu et à la fin",
+    2: "modèle n° 2 (style @actuchrono60) : vidéo réelle plein écran, récit chronologique sourcé, fin factuelle sans question",
+    3: "modèle n° 3 : comme le 2, avec arrêts sur image, zooms et flèches sur les extraits, son d'origine entre les parties de voix",
+    4: "modèle n° 4 (méthode @minutepeople.fr) : script dense ~210-235 mots, 7 temps (fait complet, déroulé une info par phrase, autre camp, contexte à la fin), carte graphique toutes les 10-15 s, preuves en flou puis net",
+}
+
+
 def preparer(evenement, extra, modele=2):
     """Prépare le dossier de montage (script en parties + indications). Renvoie un dict ou None."""
     a = evenement.get("analyse") or {}
     lignes = "\n".join(f"- [{x['source']}] {x['titre']} — {x.get('resume', '')[:500]}" for x in evenement["articles"][:20])
-    style = ("modèle n° 1 : même récit, mais avec une question au public au milieu et à la fin + « Abonnez-vous à laffaire_france »" if modele == 1
-             else "modèle n° 3 : comme le 2, avec arrêts sur image, zooms et flèches sur les extraits" if modele == 3 else "modèle n° 2")
-    prompt = f"""Prépare une vidéo TikTok pour « L'Affaire » (@laffaire_france), style @actuchrono60 ({style}) :
-- voix off de 170 à 190 mots au total (COMPTE-LES : moins de 160 mots = vidéo trop courte, interdit), découpée en 5 à 7 parties (une partie = un plan d'images) ;
-- la 1re partie commence par « On vient de l'apprendre, » ou « Terrible drame, » et donne tout le fait en une phrase, la 2e commence par « Voici ce que l'on sait. » ;
-- récit chronologique : date + lieu précis, qui, quoi, comment, chiffres, puis la source (« Selon … »), les réactions, et une FIN FACTUELLE (pas de question, pas d'« abonnez-vous ») ;
+    style = STYLES_MODELES.get(modele, STYLES_MODELES[2])
+    mots = "210 à 235" if modele == 4 else "170 à 190"
+    debut = ("la 1re partie donne tout le fait en une phrase, la 2e commence par « Voici ce que l'on sait. »" if modele == 4 else
+             "la 1re phrase entre DIRECTEMENT dans le vif du sujet (le fait nouveau, sans préambule ni « On vient de l'apprendre »)")
+    prompt = f"""Prépare une vidéo TikTok pour « L'Affaire » (@laffaire_france), {style} :
+- voix off de {mots} mots au total (COMPTE-LES : une vidéo de moins de 61 s est interdite), découpée en 5 à 8 parties (une partie = un plan d'images) ;
+- {debut} ;
+- déroulé : date + lieu précis, qui, quoi, comment, chiffres, la source (« Selon … »), les réactions, et le CONTEXTE (rappel des faits, bilan) À LA FIN ;
+- fin factuelle, sauf modèle 1 (question au public + « Abonne-toi à L'Affaire ») ;
 - ton journaliste neutre, sobre pour les drames, suspect non nommé, mineurs jamais nommés ;
 - nombres et dates ÉCRITS EN LETTRES (la voix est générée par Fish Audio) ;
 - titre à l'écran en bas à gauche (phrase courte qui finit par « ! ») + une ligne grise qui complète.

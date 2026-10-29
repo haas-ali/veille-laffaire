@@ -19,7 +19,7 @@ for ligne in (ICI / ".env").read_text(encoding="utf-8").splitlines() if (ICI / "
         os.environ.setdefault(k.strip(), v.strip())
 
 import feedparser, requests
-import config, ia, telegram as tg
+import config, ia, selection, telegram as tg
 
 ESSAI = "--essai" in sys.argv
 if "--sans-ia" in sys.argv:
@@ -241,6 +241,9 @@ def media(source):
     return s
 
 
+CREATEURS = {f[0] for f in config.FLUX if f[0].startswith("YouTube ") and f[0].split(" ", 1)[1] in ("Inoxtag", "Squeezie", "Michou", "LeBouseuh", "Gotaga", "Fortnite", "Tibo InShape", "Cyprien", "Joyca", "Mastu")}
+
+
 def noter(ev):
     texte = " " + sans_accent(" ".join(a["titre"] + " " + a["resume"][:200] for a in ev["articles"][:8])) + " "
     s = 0.0
@@ -253,6 +256,8 @@ def noter(ev):
     s += min(6, 1.5 * (nb_sources - 1))
     if any(a["type"] == "video" for a in ev["articles"]):
         s += 1
+    if any(a["source"] in CREATEURS for a in ev["articles"]):
+        s += 4  # annonce d'un créateur suivi : l'IA décide ensuite si c'est important ou banal
     if all(a["pays"] != "FR" for a in ev["articles"]):
         s -= 1
     ev["score"] = round(s, 1)
@@ -344,15 +349,16 @@ def alerter(ev):
         ev["videos_yt"] = recherche_youtube(ev)[:4]  # vraies vidéos YouTube récentes sur le sujet (clé gratuite)
     except Exception as ex:
         print("  ! YouTube :", ex)
-    ev["pct_viral"], ev["pct_medias"], ev["nb_medias"], ev["nb_tiktok"] = pourcentages(ev)
-    msg = tg.texte_alerte(ev)
-    if ESSAI:
-        print("\n" + "=" * 70 + "\n" + re.sub(r"<[^>]+>", "", msg))
-        return
+    msg = tg.texte_dernier(ev)
     a = ev.get("analyse") or {}
     art = next((x for x in ev["articles"] if x["type"] == "article"), ev["articles"][0])
-    ctx = tg.contexte(a.get("titre") or art["titre"], art["lien"], ", ".join(x for x in (a.get("lieu"), a.get("heure")) if x))
-    ev["message_id"] = tg.envoyer(msg, clavier=tg.boutons(ev["id"], ctx))
+    date_lieu = ", ".join(x for x in (a.get("date_faits"), a.get("lieu")) if x) or "date et lieu à vérifier"
+    copie = selection.texte_copie(a.get("titre") or art["titre"], a.get("resume"), date_lieu, ev.get("score100"), ev.get("fiab"), art["lien"])
+    if ESSAI:
+        print("\n" + "=" * 70 + "\n" + re.sub(r"<[^>]+>", "", msg) + "\n[COPIER] " + copie)
+        return
+    ev["copie"] = copie
+    ev["message_id"] = tg.envoyer(msg, clavier=tg.boutons_dernier(ev["id"], copie))
 
 
 def gouts(etat):
@@ -383,6 +389,44 @@ def resume_du_matin(etat):
     if len(lignes) > 1 and not ESSAI:
         tg.envoyer(tg.assembler(lignes))
     etat["resume_jour"] = now.strftime("%Y-%m-%d")
+
+
+def decider(ev, etat, deja=()):
+    """Bot « Dernière info » : envoie seulement 🟢 vert ou 🔴 rouge, une seule fois par affaire (sauf rebondissement majeur).
+    Mémoire durable des alertes envoyées : etat["envoyes"] (branche « etat », survit aux redémarrages)."""
+    a = ev.get("analyse") or {}
+    titre = a.get("titre") or ev["articles"][0]["titre"]
+    envoyes = etat.setdefault("envoyes", [])
+    age_h = (maintenant() - min(x["ts"] for x in ev["articles"])) / 3600
+    _, _, nb_medias, nb_tiktok = pourcentages(ev)
+    recents = len({media(x["source"]) for x in ev["articles"] if x["ts"] >= maintenant() - 3 * 3600})
+    rebond = bool(a.get("rebondissement_majeur"))
+    precedent = selection.deja_envoye(a, envoyes, mots(titre))
+    d = a.get("doublon_de")  # l'IA reconnaît aussi une alerte déjà envoyée (confirmé par des mots communs)
+    if not precedent and isinstance(d, int) and 0 <= d < len(deja) and len(signature(ev) & signature(deja[d])) >= 2:
+        precedent = {"id": deja[d]["id"], "titre": (deja[d].get("analyse") or {}).get("titre") or deja[d]["articles"][0]["titre"]}
+    score, detail = selection.score100(ev, nb_medias, nb_tiktok, recents, age_h, a, deja_couvert=bool(precedent))
+    fiab = selection.fiabilite(ev, a, nb_medias)
+    nuit = HEURE_PARIS().hour < 7
+    c = selection.couleur(score, a, fiab, nuit, etat.get("seuil100"))
+    raison = ("doublon" if precedent and not rebond else "trop ancien" if age_h > selection.AGE_MAX_SANS_REBOND and not rebond
+              else "pause" if etat.get("pause") else None if c else f"score {score} trop bas")
+    print(f"  {score:3}/100 {c or '-':5} {fiab:12} {('→ ' + raison) if raison else '→ ENVOI'} | {titre[:70]}")
+    ev.update(score100=score, detail100=detail, fiab=fiab, couleur=c)
+    if raison:
+        if precedent and not rebond:
+            ev["notifie"], ev["doublon_de"] = True, precedent.get("id")
+        return False
+    ev["rebond_de"] = precedent.get("titre") if precedent else None
+    ev["interet"] = selection.interet_mediatique(nb_medias, nb_tiktok)
+    # verrou anti-doublon AVANT l'envoi : une 2e fiche de la même affaire dans ce tour sera reconnue
+    pers, lieux = selection.entites(a)
+    envoyes.append({"id": ev["id"], "ts": maintenant(), "titre": titre, "cle": selection.cle_affaire(a),
+                    "personnes": sorted(pers), "lieux": sorted(lieux), "mots": sorted(mots(titre)), "couleur": c})
+    del envoyes[:-300]
+    ev["notifie"] = True
+    alerter(ev)
+    return True
 
 
 def traiter_alertes(etat, touches, premier_tour):
@@ -417,17 +461,9 @@ def traiter_alertes(etat, touches, premier_tour):
             ev["analyse"] = res or ev.get("analyse")
             ev["analyses"] += 1
             ev["sources_analyse"] = ev["nb_sources"]
-            note = (ev.get("analyse") or {}).get("score_tiktok") or 0
-            d = (ev.get("analyse") or {}).get("doublon_de")
-            print(f"  IA {note}/10 {'(doublon)' if isinstance(d, int) else ''}| {ev['articles'][0]['titre'][:80]}")
-            if isinstance(d, int) and 0 <= d < len(deja) and len(signature(ev) & signature(deja[d])) >= 2:  # l'IA doit être confirmée par des mots communs
-                ev["notifie"] = True  # même fait qu'une alerte déjà envoyée : pas de nouvelle alerte
-                ev["doublon_de"] = deja[d]["id"]
-            elif note >= seuil_actuel(etat) or (est_urgent(ev) and not etat.get("pause")):
-                ev["urgent"] = est_urgent(ev)
-                alerter(ev); ev["notifie"] = True
+            decider(ev, etat, deja)
         elif not ia.CLE and ev["score"] >= config.SEUIL_NOTIF_SANS_IA:
-            alerter(ev); ev["notifie"] = True; ev["analyses"] = 3
+            ev["analyses"] = 3; decider(ev, etat)
 
 
 # ---------- 4. Boutons ----------
@@ -572,12 +608,12 @@ def dossier_md(s):
     return "\n".join(L) + "\n"
 
 
-AIDE = """🤖 <b>Commandes de la veille</b> (réponse au prochain tour, 30 min max)
+AIDE = """🤖 <b>Dernière info 🚨 — commandes</b> (réponse au prochain tour, 30 min max)
 /statut — état de la veille
 /pause — coupe les alertes · /reprise — les remet
-/seuil 7 — alerte seulement à partir de 7/10 (actuel : {seuil})
+/seuil 80 — alertes 🟢 seulement à partir de 80/100 (actuel : {seuil})
 /sujets — derniers sujets préparés
-La nuit (0 h-7 h), seules les infos 9-10/10 sont envoyées."""
+Seulement 🟢 (fort potentiel) et 🔴 (urgent / rebondissement majeur). La nuit (0 h-7 h) : 🔴 et 🟢 très forts seulement."""
 
 
 def demander(etat, eid, demande):
@@ -606,23 +642,23 @@ def commande(etat, texte, cite):
     if not mot.startswith("/") and mot in ("start", "aide", "help", "pause", "reprise", "seuil", "statut", "sujets"):
         mot = "/" + mot  # « Statut » sans la barre marche aussi
     if mot in ("/start", "/aide", "/help"):
-        tg.envoyer(AIDE.format(seuil=etat.get("seuil", config.SEUIL_NOTIF_IA)))
+        tg.envoyer(AIDE.format(seuil=etat.get("seuil100", selection.SEUIL_VERT)))
     elif mot == "/pause":
         etat["pause"] = True; tg.envoyer("⏸️ Alertes en pause. Tape /reprise pour les remettre.")
     elif mot == "/reprise":
         etat["pause"] = False; tg.envoyer("▶️ Alertes reprises.")
     elif mot == "/seuil":
         try:
-            n = int(reste.strip()); assert 1 <= n <= 10
-            etat["seuil"] = n; tg.envoyer(f"🎚️ Seuil réglé : alertes à partir de {n}/10.")
+            n = int(reste.strip()); n = n * 10 if n <= 10 else n; assert 30 <= n <= 100
+            etat["seuil100"] = n; tg.envoyer(f"🎚️ Seuil réglé : alertes 🟢 à partir de {n}/100 (le 🔴 urgent passe toujours).")
         except (ValueError, AssertionError):
-            tg.envoyer("Écris par exemple : /seuil 7 (un nombre de 1 à 10).")
+            tg.envoyer("Écris par exemple : /seuil 80 (un nombre de 30 à 100).")
     elif mot == "/statut":
         h = maintenant() - 86400
         nb = sum(1 for v in etat["evenements"].values() if v["notifie"] and not v.get("doublon_de") and v.get("maj", 0) >= h)
         nuit = HEURE_PARIS().hour < 7
-        tg.envoyer(f"📊 <b>Veille</b> : {'⏸️ en pause' if etat.get('pause') else '▶️ active'}{' · 🌙 mode nuit' if nuit else ''}\n"
-                   f"Seuil : {etat.get('seuil', config.SEUIL_NOTIF_IA)}/10 · {len(etat['evenements'])} événements suivis · {nb} alertes en 24 h")
+        tg.envoyer(f"📊 <b>Dernière info</b> : {'⏸️ en pause' if etat.get('pause') else '▶️ active'}{' · 🌙 mode nuit' if nuit else ''}\n"
+                   f"Seuil 🟢 : {etat.get('seuil100', selection.SEUIL_VERT)}/100 · {len(etat['evenements'])} événements suivis · {nb} alertes en 24 h")
     elif mot == "/sujets":
         prep = sorted((v for v in etat["evenements"].values() if v["statut"] == "prepare"), key=lambda v: -v["cree"])[:10]
         tg.envoyer("🎬 <b>Sujets préparés</b>\n" + ("\n".join(f"• {tg.e(v['dossier'])}" for v in prep) or "aucun pour l'instant"))
@@ -658,14 +694,24 @@ def traiter_clics(etat):
         elif action == "plus":
             tg.repondre_clic(id_clic, "Recherche en cours…")
             tg.envoyer(texte_approfondi(ev, approfondir(ev)), ev["id"], reponse_a=mid)
-        elif action.startswith("prep"):  # prep1 / prep2 / prep3 = modele de montage choisi (« prep » seul : anciennes alertes)
+        elif action.startswith("prep"):  # prep1..prep4 = modèle de montage choisi (« prep » seul : anciennes alertes)
             modele = int(action[4:] or 2)
-            tg.repondre_clic(id_clic, f"Préparation du dossier (modèle {modele})…")
-            dos = preparer(ev, modele)
-            ev["statut"], ev["dossier"] = "prepare", dos.name; noter_clic(etat, ev, "prep")
-            tg.marquer(mid, f"🎬 Dossier préparé — modèle {modele}")
-            tg.envoyer_fichier(dos / "dossier.md", f"🎬 Dossier prêt : {dos.name} (modèle {modele})\n\nSi ton PC et l'appli Claude sont ouverts, "
-                               f"la vidéo démarre toute seule. Sinon, dis à Claude : « prépare le sujet {dos.name} ».\n(rien n'est publié sans toi)")
+            if ev["statut"] == "prepare":  # double clic ou 2e modèle : pas de 2e génération du même sujet
+                tg.repondre_clic(id_clic, f"Déjà lancé (modèle {ev.get('modele', '?')}) — dossier {ev.get('dossier', '')}")
+                continue
+            ev["statut"], ev["modele"] = "prepare", modele  # verrou posé AVANT le travail (clics répétés pendant la préparation)
+            tg.repondre_clic(id_clic, f"Modèle {modele} : préparation du dossier…")
+            try:
+                dos = preparer(ev, modele)
+            except Exception as ex:
+                ev["statut"] = "nouveau"
+                tg.envoyer(f"❌ Échec de la préparation (modèle {modele}) : {tg.e(str(ex)[:150])}", reponse_a=mid)
+                continue
+            ev["dossier"] = dos.name; noter_clic(etat, ev, "prep")
+            tg.marquer(mid, f"⏳ Modèle {modele} : en attente du montage", ev.get("copie"))
+            tg.envoyer_fichier(dos / "dossier.md", f"⏳ En attente — modèle {modele}\nDossier prêt : {dos.name}\n\nLe montage se fait sur ton PC "
+                               f"(appli Claude ouverte). Pour le lancer tout de suite, dis à Claude : « prépare le sujet {dos.name} ».\n"
+                               "Tu recevras ici « ⏳ en cours » puis la vidéo, la miniature et la description. Rien n'est publié sans toi.")
 
 
 # ---------- Tour complet ----------
