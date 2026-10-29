@@ -120,7 +120,7 @@ COMPTES_TIKTOK = ["actuchrono60", "hugodecrypte", "brutofficiel", "konbini", "le
 MOITIE_PAR_TOUR = True
 
 SEUIL_ANALYSE = 5.0      # score mots-clés à partir duquel on demande l'avis de l'IA
-SEUIL_NOTIF_IA = 6       # note TikTok (sur 10) minimale pour envoyer une alerte
+SEUIL_NOTIF_IA = 7       # note TikTok (sur 10) minimale pour envoyer une alerte (29/10 : plus de 🟡 faibles, seulement 🟠 🟢 🔴)
 SEUIL_NOTIF_SANS_IA = 9  # si pas de clé IA : score mots-clés minimal pour alerter
 MAX_ANALYSES_PAR_TOUR = 4  # protège le quota gratuit de l'IA
 AGE_MAX_HEURES = 36      # on ignore les articles plus vieux
