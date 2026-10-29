@@ -86,6 +86,20 @@ Réponds avec ce JSON :
     return res
 
 
+def couverture(m, evs, a=None):
+    """Combien de médias (lus par la veille) parlent déjà du sujet de la vidéo : (%, nombre)."""
+    ma = V.mots(m["titre"] + " " + ((a or {}).get("sujet") or ""))
+    meilleur, score = None, 0.0
+    for ev in evs:
+        s = V.similarite(ma, V.signature(ev), lambda w: 1.0)
+        if s > score:
+            meilleur, score = ev, s
+    if not meilleur or score < 0.5:
+        return 0, 0
+    n = len({V.media(x["source"]) for x in meilleur["articles"]})
+    return min(100, round(n / 15 * 100)), n
+
+
 def couleur(m):
     if m["note"] >= 8:
         return "🟢 <b>VIDÉO QUI EXPLOSE</b>"
@@ -103,7 +117,8 @@ def texte(m, a):
     t = [couleur(m) + "\n", f"🎥 <b>{e(m['titre'][:200])}</b>", f"📱 TikTok · {e(m['chaine'])} · {m['duree']} s",
          f"\n📈 <b>{fmt(m['vues'])} vues</b> en {m['age']:.0f} h · <b>{fmt(m['vitesse'])} vues/heure</b>",
          f"💬 {m['eng'] * 100:.1f} % d'interactions" + (f" · 🚀 {m['ratio']:.1f}× plus que d'habitude" if m["ratio"] else ""),
-         f"Score viral : <b>{m['note']}/10</b>" + (f" · Intérêt pour L'Affaire : <b>{a.get('note_refaire')}/10</b>" if a else "")]
+         f"Score viral : <b>{m['note']}/10</b>" + (f" · Intérêt pour L'Affaire : <b>{a.get('note_refaire')}/10</b>" if a else ""),
+         tg.jauges(min(99, round(m["note"] * 10)), m.get("pct_medias", 0), m.get("nb_medias", 0))]
     if a:
         t.append(f"\n🧐 <b>De quoi ça parle :</b> {e(a.get('sujet'))}")
         if a.get("pourquoi_viral"):
@@ -198,7 +213,10 @@ def main():
 
     with ThreadPoolExecutor(4) as p:  # les analyses IA en même temps (le tour cloud doit rester < 60 s)
         analyses = list(p.map(analyse_sure, choisies))
+    veille_etat = json.loads(V.ETAT.read_text(encoding="utf-8-sig")) if V.ETAT.exists() else {"evenements": {}}
+    evs = list(veille_etat["evenements"].values())
     for m, a in zip(choisies, analyses):
+        m["pct_medias"], m["nb_medias"] = couverture(m, evs, a)
         mem = etat["videos"][m["id"]]
         mem.update(mesure=m, analyse=a)
         print(f"  {m['note']:4.1f} | actu={(a or {}).get('actualite')} | {fmt(m['vitesse'])}/h | {m['chaine']} | {m['titre'][:60]}")

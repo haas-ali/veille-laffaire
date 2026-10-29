@@ -32,6 +32,19 @@ def boutons(eid):
                                  {"text": "✖️ IGNORER", "callback_data": f"ign:{eid}"}]]}
 
 
+def barre(p):
+    n = round(p / 10)
+    return "▰" * n + "▱" * (10 - n)
+
+
+def jauges(viral, medias, nb=None):
+    """Deux jauges : chances que ça perce, et à quel point les médias en parlent déjà."""
+    m = f"{medias} %" + (f" ({nb} média{'s' if nb > 1 else ''})" if nb is not None else "")
+    if medias == 0:
+        m += " — personne n'en parle encore 👀"
+    return f"🔥 Viralité : <b>{viral} %</b> {barre(viral)}\n📰 Couverture médias : <b>{m}</b> {barre(medias)}"
+
+
 def niveau(ev):
     """Code couleur : 🔴 urgente, 🟢 très importante (8-10/10), 🟠 moyenne (7/10), 🟡 faible (6/10 ou moins)."""
     note = (ev.get("analyse") or {}).get("score_tiktok")
@@ -50,6 +63,8 @@ def texte_alerte(ev):
     t = [niveau(ev) + "\n"]
     t.append(f"{'‼️' if ev.get('urgent') else '📰'} <b>{e(a.get('titre') or ev['articles'][0]['titre'])}</b>")
     t.append(f"Potentiel TikTok : <b>{note}/10</b>" if note is not None else f"(sans analyse IA — score mots-clés {ev['score']:.0f})")
+    if ev.get("pct_viral") is not None:
+        t.append(jauges(ev["pct_viral"], ev["pct_medias"], ev.get("nb_medias")))
     lieu = " · ".join(x for x in [a.get("lieu") and f"📍 {e(a['lieu'])}", a.get("heure") and f"🕒 {e(a['heure'])}"] if x)
     if lieu:
         t.append(lieu)

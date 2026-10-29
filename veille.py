@@ -286,6 +286,18 @@ except Exception:  # Windows sans base des fuseaux : heure d'hiver
     HEURE_PARIS = lambda: datetime.now(PARIS)
 
 
+def pourcentages(ev):
+    """(% de viralité, % de couverture médias, nombre de médias).
+    Viralité : note IA + vidéos disponibles + nombre de médias qui en parlent depuis 3 h (l'info s'emballe) + fait grave.
+    Couverture : nombre de médias différents qui en parlent, 15 médias = 100 %."""
+    a = ev.get("analyse") or {}
+    n = len({media(x["source"]) for x in ev["articles"]})
+    recents = len({media(x["source"]) for x in ev["articles"] if x["ts"] >= maintenant() - 3 * 3600})
+    v = (a.get("score_tiktok") or 0) * 9 + (6 if any(x["type"] == "video" for x in ev["articles"]) or ev.get("videos_yt") else 0)
+    v += min(15, recents * 3) + (5 if ev.get("urgent") else 0)
+    return max(5, min(99, round(v))), min(100, round(n / 15 * 100)), n
+
+
 def est_urgent(ev):
     """Actu grave qui fait beaucoup de vues : l'IA le dit, ou les titres contiennent un mot grave (attentat, meurtre, racisme…)."""
     a = ev.get("analyse") or {}
@@ -309,6 +321,7 @@ def alerter(ev):
         ev["videos_yt"] = recherche_youtube(ev)[:4]  # vraies vidéos YouTube récentes sur le sujet (clé gratuite)
     except Exception as ex:
         print("  ! YouTube :", ex)
+    ev["pct_viral"], ev["pct_medias"], ev["nb_medias"] = pourcentages(ev)
     msg = tg.texte_alerte(ev)
     if ESSAI:
         print("\n" + "=" * 70 + "\n" + re.sub(r"<[^>]+>", "", msg))

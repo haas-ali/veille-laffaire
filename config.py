@@ -115,7 +115,7 @@ COMPTES_TIKTOK = ["actuchrono60", "hugodecrypte", "brutofficiel", "konbini", "le
                   "actuone.tv1", "tiktok.ragot", "infoexpress35", "actuexpress23", "france3nouvelleaquitaine", "france3grandest",
                   "streetpress_", "midilibre", "infoglobale.media", "stupmedia", "flashinfosoff", "ostor227", "actufrance14", "flash_actu24",
                   "lesignal.actu", "reclist", "zoomdefrance", "askyp.france", "letiktokinfo", "josselin.journaliste", "actucru",
-                  "actunowtv", "tera24_usa", "tera24_england"]
+                  "tera24_usa", "tera24_england"]
 # pour garder le tour cloud sous 60 s, chaque tour lit une moitié des comptes (en alternance) : chaque compte est lu toutes les heures
 MOITIE_PAR_TOUR = True
 
