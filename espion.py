@@ -233,18 +233,23 @@ def main():
                 m["msg"] = envoyer(texte_alerte(m))
     rates = [c for c, v in lus if not v]
     print(f"{sum(len(v) for _, v in lus)} vidéos lues sur {len(lus)} comptes" + (f" (en échec : {', '.join(rates)})" if rates else ""))
-    a_faire = sorted((x for x in etat["videos"].values() if x.get("a_faire") and now - x["ts"] < 48 * 3600), key=lambda x: -x["ts"])[:3]
-    if a_faire and reste() > 10:
-        with ThreadPoolExecutor(3) as p:
-            res = list(p.map(lambda x: (x, analyser(x)), a_faire))
-        for x, a in res:
-            x["essais"] += reste() > 0  # manque de temps = pas un vrai échec, on réessaie au tour suivant
-            if a:
-                x.update(analyse=a, a_faire=False)
-                envoyer(texte_fiche(x, a), reponse_a=x.get("msg"))
-                print(f"  fiche @{x['compte']} : {x['titre'][:50]}")
-            elif x["essais"] >= 3:
-                x["a_faire"] = False
+    a_faire = sorted((x for x in etat["videos"].values() if x.get("a_faire") and now - x["ts"] < 48 * 3600), key=lambda x: -x["ts"])[:2]
+    a_faire = a_faire if reste() > 10 else []
+    for x in a_faire:  # 4 tentatives max (un manque de temps compte aussi : le chien de garde peut tout couper)
+        x["essais"] += 1
+        x["a_faire"] = x["essais"] < 4
+    enregistrer(etat)  # alertes et tentatives notées avant l'analyse
+    if a_faire:
+        from concurrent.futures import as_completed
+        with ThreadPoolExecutor(2) as p:  # 2 max : plus de ffmpeg/yt-dlp en même temps ralentit veille.py et viral.py
+            futs = {p.submit(analyser, x): x for x in a_faire}
+            for fut in as_completed(futs):
+                x, a = futs[fut], fut.result()
+                if a:  # fiche envoyée puis enregistrée aussitôt (jamais deux fois la même)
+                    x.update(analyse=a, a_faire=False)
+                    envoyer(texte_fiche(x, a), reponse_a=x.get("msg"))
+                    enregistrer(etat)
+                    print(f"  fiche @{x['compte']} : {x['titre'][:50]}")
     paris = datetime.now(V.PARIS)
     semaine = paris.strftime("%G-%V")
     if "--bilan" in sys.argv or (paris.weekday() == 6 and paris.hour >= 20 and etat.get("bilan") != semaine):
@@ -255,9 +260,26 @@ def main():
     etat["videos"] = {k: x for k, x in etat["videos"].items() if x["ts"] >= limite}
     for x in etat["videos"].values():
         x.pop("_r", None)
+    enregistrer(etat)
+
+
+def enregistrer(etat):
     if not ESSAI:
         ETAT.parent.mkdir(exist_ok=True)
-        ETAT.write_text(json.dumps(etat, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        tmp = ETAT.with_suffix(".tmp")  # écriture atomique : le chien de garde ne doit jamais laisser un fichier à moitié écrit
+        tmp.write_text(json.dumps(etat, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        os.replace(tmp, ETAT)
+
+
+def chien_de_garde():
+    """Coupe tout à BUDGET + 3 s : l'observateur ne doit jamais rallonger le tour cloud. Ce qui n'est pas fini repart au tour suivant."""
+    import threading
+    def couper():
+        print("  ! temps écoulé : arrêt (analyse reprise au prochain tour)", flush=True)
+        os._exit(0)
+    t = threading.Timer(BUDGET + 3, couper)
+    t.daemon = True
+    t.start()
 
 
 if __name__ == "__main__":
@@ -271,4 +293,5 @@ if __name__ == "__main__":
         a = analyser(m)
         print(re.sub(r"<[^>]+>", "", texte_fiche(m, a)) if a else "analyse impossible")
     else:
+        chien_de_garde()
         main()

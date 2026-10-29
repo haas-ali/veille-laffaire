@@ -43,8 +43,11 @@ jobs:
           python espion.py > espion.log 2>&1 &
           e=$!
           python veille.py || r=$?
+          echo "veille : ${SECONDS} s"
           python viral.py || r=$?
+          echo "veille + viral : ${SECONDS} s"
           wait $e || echo "espion en échec"
+          echo "fin observateur : ${SECONDS} s"
           cat espion.log
           exit ${r:-0}
       - name: Suivi de mes vidéos + meilleures heures
