@@ -23,9 +23,9 @@ tg.API = f"https://api.telegram.org/bot{tg.TOKEN}/"
 
 
 def lire_compte(compte):
-    """Les 12 dernières vidéos d'un compte TikTok (yt-dlp, sans connexion)."""
+    """Les 8 dernières vidéos d'un compte TikTok (yt-dlp, sans connexion)."""
     try:
-        r = subprocess.run(["yt-dlp", "--encoding", "utf-8", "--flat-playlist", "--playlist-items", "1-12", "--print", CHAMPS,
+        r = subprocess.run(["yt-dlp", "--encoding", "utf-8", "--flat-playlist", "--playlist-items", "1-8", "--print", CHAMPS,
                             f"https://www.tiktok.com/@{compte}"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
     except (subprocess.TimeoutExpired, OSError) as ex:
         print(f"  ! @{compte} : {ex}"); return []
@@ -176,7 +176,7 @@ def main():
     if config.MOITIE_PAR_TOUR:  # une moitié par tour, en alternance (heure paire/impaire de la demi-heure)
         moitie = int(time.time() // 1800) % 2
         comptes = comptes[moitie::2]
-    with ThreadPoolExecutor(24) as p:
+    with ThreadPoolExecutor(48) as p:
         par_compte = list(p.map(lire_compte, comptes))
     mesures = []
     for vids in par_compte:
