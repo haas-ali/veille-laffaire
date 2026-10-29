@@ -34,6 +34,7 @@ jobs:
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_TOKEN_VIRAL: ${{ secrets.TELEGRAM_TOKEN_VIRAL }}
+          TELEGRAM_TOKEN_ESPION: ${{ secrets.TELEGRAM_TOKEN_ESPION }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}

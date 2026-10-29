@@ -20,7 +20,9 @@ DEBUT = time.time()
 BUDGET = 38  # secondes par tour (veille.py + viral.py ≈ 40 s en parallèle) ; lecture ~4 s + téléchargement ~3 s + plans ~2 s + Gemini 14-20 s
 MODELES_VIDEO = ["gemini-3.5-flash", "gemini-flash-lite-latest"]
 
-tg.TOKEN = os.environ.get("TELEGRAM_TOKEN_VIRAL", "").strip()
+# son propre bot (TELEGRAM_TOKEN_ESPION) ; tant qu'il n'est pas configuré, les messages passent par le bot viral
+tg.TOKEN = (os.environ.get("TELEGRAM_TOKEN_ESPION") or os.environ.get("TELEGRAM_TOKEN_VIRAL", "")).strip()
+PROPRE_BOT = bool(os.environ.get("TELEGRAM_TOKEN_ESPION", "").strip())
 tg.API = f"https://api.telegram.org/bot{tg.TOKEN}/"
 
 
@@ -213,9 +215,27 @@ Réponds en français avec ce JSON : {{"methodes": ["5 à 7 méthodes communes, 
                          f"\n✂️ <b>Rythme conseillé :</b> {e(a.get('rythme_ideal'))}", "\n🧪 <b>À tester</b>\n" + l(a.get("a_tester"))])
 
 
+def commandes(etat):
+    """/start, /aide, /comptes sur le bot de l'observateur (seulement s'il a son propre bot : sinon ce sont les messages du bot viral)."""
+    if ESSAI or not PROPRE_BOT:
+        return
+    try:
+        _, msgs, etat["offset"] = tg.clics(etat.get("offset", 0))
+    except RuntimeError as ex:
+        print("  ! Telegram :", ex); return
+    for texte_msg, _ in msgs:
+        if texte_msg.lower().lstrip("/") in ("start", "aide", "help", "comptes", "statut"):
+            nb = sum(1 for x in etat["videos"].values() if x.get("analyse") and time.time() - x["ts"] < 7 * 86400)
+            envoyer("🔬 <b>Observateur L'Affaire</b>\nJe surveille ces comptes toutes les 30 min :\n"
+                    + "\n".join(f"• @{tg.e(c)}" for c in config.COMPTES_ESPION)
+                    + f"\n\n👀 alerte dès qu'ils postent · 🔬 fiche « méthode » (l'IA regarde la vidéo) · 📚 bilan le dimanche à 20 h\n"
+                      f"{nb} vidéo(s) analysée(s) ces 7 derniers jours.")
+
+
 def main():
     etat = json.loads(ETAT.read_text(encoding="utf-8")) if ETAT.exists() else {}
     etat.setdefault("videos", {})
+    commandes(etat)
     premier = not etat["videos"]
     with ThreadPoolExecutor(8) as p:
         lus = list(p.map(lire_compte, config.COMPTES_ESPION))
