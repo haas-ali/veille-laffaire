@@ -430,21 +430,21 @@ def nom_dossier(ev, titre):
     return d + "_" + (re.sub(r"[^a-z0-9]+", "-", sans_accent(titre)).strip("-")[:50] or ev["id"])
 
 
-def preparer(ev):
-    """Crée sujets/<date>_<titre>/ avec le dossier de montage. Renvoie le chemin."""
+def preparer(ev, modele=2):
+    """Crée sujets/<date>_<titre>/ avec le dossier de montage (modèle 1, 2 ou 3 choisi sur Telegram). Renvoie le chemin."""
     extra = ev.get("approfondi") or approfondir(ev)
     plan = None
     if ia.CLE:
         try:
             infos = {"articles": [a["titre"] + " (" + a["source"] + ")" for a in extra["articles"]], "ia": extra.get("ia")}
-            plan = ia.preparer(ev, infos)
+            plan = ia.preparer(ev, infos, modele)
             for _ in range(2):  # script trop court = vidéo de moins de 61 s : on redemande
                 nb = sum(len(x.split()) for x in (plan or {}).get("parts") or [])
                 if nb >= 160 or not plan:
                     break
                 print(f"  script trop court ({nb} mots), on redemande")
                 infos["consigne"] = f"Ta version précédente faisait {nb} mots : TROP COURT. Écris entre 170 et 190 mots, avec plus de détails tirés des articles (sans rien inventer)."
-                plan = ia.preparer(ev, infos) or plan
+                plan = ia.preparer(ev, infos, modele) or plan
         except Exception as ex:
             print("  ! IA préparer :", ex)
     plan = plan or {}
@@ -454,7 +454,7 @@ def preparer(ev):
     dos.mkdir(parents=True, exist_ok=True)
     articles = ev["articles"] + extra["articles"]
     videos = [x for x in articles if x["type"] == "video"] + [{"titre": v["titre"], "source": v["chaine"], "lien": v["lien"]} for v in extra["videos_youtube"]]
-    sujet = {"id": ev["id"], "titre": titre, "prepare_le": datetime.now(PARIS).isoformat(timespec="minutes"),
+    sujet = {"id": ev["id"], "titre": titre, "modele": modele, "prepare_le": datetime.now(PARIS).isoformat(timespec="minutes"),
              "analyse": a, "plan": plan, "approfondi": extra.get("ia"), "sources_web": extra.get("sources_web"),
              "articles": [{k: x[k] for k in ("source", "titre", "lien", "date")} for x in articles if x["type"] == "article"],
              "videos": [{k: x[k] for k in ("source", "titre", "lien")} for x in videos],
@@ -511,12 +511,14 @@ def traiter_clics(etat):
         elif action == "plus":
             tg.repondre_clic(id_clic, "Recherche en cours…")
             tg.envoyer(texte_approfondi(ev, approfondir(ev)), ev["id"], reponse_a=mid)
-        elif action == "prep":
-            tg.repondre_clic(id_clic, "Préparation du dossier…")
-            dos = preparer(ev)
+        elif action.startswith("prep"):  # prep1 / prep2 / prep3 = modele de montage choisi (« prep » seul : anciennes alertes)
+            modele = int(action[4:] or 2)
+            tg.repondre_clic(id_clic, f"Préparation du dossier (modèle {modele})…")
+            dos = preparer(ev, modele)
             ev["statut"], ev["dossier"] = "prepare", dos.name; noter_clic(etat, ev, "prep")
-            tg.marquer(mid, "🎬 Dossier préparé")
-            tg.envoyer_fichier(dos / "dossier.md", f"🎬 Dossier prêt : {dos.name}\n\nSur ton PC, dis à Claude Code :\n« prépare le sujet {dos.name} »\n(rien n'est publié sans toi)")
+            tg.marquer(mid, f"🎬 Dossier préparé — modèle {modele}")
+            tg.envoyer_fichier(dos / "dossier.md", f"🎬 Dossier prêt : {dos.name} (modèle {modele})\n\nSi ton PC et l'appli Claude sont ouverts, "
+                               f"la vidéo démarre toute seule. Sinon, dis à Claude : « prépare le sujet {dos.name} ».\n(rien n'est publié sans toi)")
 
 
 # ---------- Tour complet ----------

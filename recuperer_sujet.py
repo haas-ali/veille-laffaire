@@ -33,6 +33,15 @@ if jeton:
 requests = S  # toutes les requêtes ci-dessous passent par la session identifiée
 liste = requests.get(API, timeout=30).json()
 noms = sorted((x["name"] for x in liste if x.get("type") == "dir"), reverse=True) if isinstance(liste, list) else []
+TRAITES = ICI / "traites.txt"  # sujets deja montes sur ce PC (pour la tache automatique)
+faits = set(TRAITES.read_text(encoding="utf-8").split()) if TRAITES.exists() else set()
+if sys.argv[1:2] == ["--nouveaux"]:  # liste les sujets valides sur Telegram mais pas encore montes ; rien = rien a faire
+    print("\n".join(n for n in noms if n not in faits))
+    raise SystemExit
+if sys.argv[1:2] == ["--fait"]:
+    with open(TRAITES, "a", encoding="utf-8") as f:
+        f.write(sys.argv[2] + "\n")
+    raise SystemExit
 if len(sys.argv) < 2:
     print("\n".join(noms) or "Aucun sujet préparé pour l'instant.")
     raise SystemExit
@@ -49,6 +58,7 @@ for f in fichiers:
     cible.parent.mkdir(exist_ok=True)
     cible.write_bytes(requests.get(f["download_url"], timeout=60).content)
 print("Dossier :", dos)
+print("Modèle choisi sur Telegram :", sujet.get("modele", "non précisé"))
 
 # Vidéos : celles trouvées par la veille + recherche YouTube (yt-dlp, comme dans le workflow habituel)
 videos = [v["lien"] for v in sujet["videos"] if "youtube.com" in v["lien"] or "youtu.be" in v["lien"]][:4]

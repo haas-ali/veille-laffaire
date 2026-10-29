@@ -1,7 +1,7 @@
-﻿"""Envoi des alertes Telegram et lecture des clics sur les boutons.
+"""Envoi des alertes Telegram et lecture des clics sur les boutons.
 
 Lancé seul (python telegram.py), il affiche ton identifiant de discussion et envoie un message de test."""
-import html, os
+import html, os, sys
 from pathlib import Path
 import requests
 
@@ -25,7 +25,9 @@ def api(methode, fichiers=None, **params):
 
 
 def boutons(eid):
-    return {"inline_keyboard": [[{"text": "🎬 PRÉPARER LA VIDÉO", "callback_data": f"prep:{eid}"}],
+    return {"inline_keyboard": [[{"text": "🎬 Modèle 1", "callback_data": f"prep1:{eid}"},
+                                 {"text": "🎬 Modèle 2", "callback_data": f"prep2:{eid}"},
+                                 {"text": "🎬 Modèle 3", "callback_data": f"prep3:{eid}"}],
                                 [{"text": "🔎 APPROFONDIR", "callback_data": f"plus:{eid}"},
                                  {"text": "✖️ IGNORER", "callback_data": f"ign:{eid}"}]]}
 
@@ -125,6 +127,9 @@ def marquer(message_id, etiquette):
 
 
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["--message"]:  # utilise par la tache automatique du PC : python telegram.py --message "texte"
+        envoyer(e(" ".join(sys.argv[2:])))
+        raise SystemExit
     if not TOKEN:
         raise SystemExit("Mets TELEGRAM_TOKEN dans le fichier .env")
     print("Bot :", api("getMe")["username"])

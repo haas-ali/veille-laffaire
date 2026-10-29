@@ -112,11 +112,13 @@ Réponds UNIQUEMENT avec ce JSON :
     return appeler(prompt, recherche_web=True)
 
 
-def preparer(evenement, extra):
+def preparer(evenement, extra, modele=2):
     """Prépare le dossier de montage (script en parties + indications). Renvoie un dict ou None."""
     a = evenement.get("analyse") or {}
     lignes = "\n".join(f"- [{x['source']}] {x['titre']} — {x.get('resume', '')[:500]}" for x in evenement["articles"][:20])
-    prompt = f"""Prépare une vidéo TikTok pour « L'Affaire » (@laffaire_france), style @actuchrono60 (modèle n° 2) :
+    style = ("modèle n° 1 : même récit, mais avec une question au public au milieu et à la fin + « Abonnez-vous à laffaire_france »" if modele == 1
+             else "modèle n° 3 : comme le 2, avec arrêts sur image, zooms et flèches sur les extraits" if modele == 3 else "modèle n° 2")
+    prompt = f"""Prépare une vidéo TikTok pour « L'Affaire » (@laffaire_france), style @actuchrono60 ({style}) :
 - voix off de 170 à 190 mots au total (COMPTE-LES : moins de 160 mots = vidéo trop courte, interdit), découpée en 5 à 7 parties (une partie = un plan d'images) ;
 - la 1re partie commence par « On vient de l'apprendre, » ou « Terrible drame, » et donne tout le fait en une phrase, la 2e commence par « Voici ce que l'on sait. » ;
 - récit chronologique : date + lieu précis, qui, quoi, comment, chiffres, puis la source (« Selon … »), les réactions, et une FIN FACTUELLE (pas de question, pas d'« abonnez-vous ») ;
