@@ -145,9 +145,11 @@ COMPTES_TIKTOK = ["actuchrono60", "hugodecrypte", "brutofficiel", "konbini", "le
                   "lesignal.actu", "reclist", "zoomdefrance", "askyp.france", "letiktokinfo", "josselin.journaliste", "actucru",
                   "tera24_usa", "tera24_england"]
 # Observateur (espion.py) : alerte dès qu'ils postent + analyse de leur méthode de rétention (demande du 29/10/2026)
-COMPTES_ESPION = ["minutepeople.fr", "actuchrono60", "actuone.tv1", "bonnequestion.tv", "lepointactuu", "chronoactu"]
+COMPTES_ESPION = ["minutepeople.fr", "actuchrono60"]  # 01/11 : seulement ces 2 comptes
+COMPTES_TIKTOK_ANCIENS = COMPTES_TIKTOK  # les 93 comptes d'avant, gardés au cas où
+COMPTES_TIKTOK = COMPTES_ESPION  # 01/11 : le bot viral ne surveille plus que ces comptes
 # pour garder le tour cloud sous 60 s, chaque tour lit une moitié des comptes (en alternance) : chaque compte est lu toutes les heures
-MOITIE_PAR_TOUR = True
+MOITIE_PAR_TOUR = False
 
 SEUIL_ANALYSE = 5.0      # score mots-clés à partir duquel on demande l'avis de l'IA
 SEUIL_NOTIF_IA = 7       # note TikTok (sur 10) minimale pour envoyer une alerte (29/10 : plus de 🟡 faibles, seulement 🟠 🟢 🔴)
