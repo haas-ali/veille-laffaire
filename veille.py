@@ -279,8 +279,14 @@ def doit_analyser(ev):
     if ev["nb_sources"] < 2 and ev["articles"][0]["source"] not in CONNUS:
         return False  # une seule source inconnue (site douteux remonté par Google) : on attend une confirmation
     if ev["analyses"] == 0:
-        return ev["score"] >= config.SEUIL_ANALYSE
+        # 08/11 : une info reprise par 3 médias en 3 h s'emballe → analysée tout de suite, même sans mot-clé (sport, people…)
+        return ev["score"] >= config.SEUIL_ANALYSE or medias_recents(ev) >= 3
     return ev["nb_sources"] >= ev["sources_analyse"] + 3  # l'événement a beaucoup grossi : on redemande
+
+
+def medias_recents(ev, heures=3):
+    lim = maintenant() - heures * 3600
+    return len({media(x["source"]) for x in ev["articles"] if x["ts"] >= lim})
 
 
 try:
@@ -400,11 +406,15 @@ def decider(ev, etat, deja=()):
     age_h = (maintenant() - min(x["ts"] for x in ev["articles"])) / 3600
     _, _, nb_medias, nb_tiktok = pourcentages(ev)
     recents = len({media(x["source"]) for x in ev["articles"] if x["ts"] >= maintenant() - 3 * 3600})
-    rebond = bool(a.get("rebondissement_majeur"))
-    precedent = selection.deja_envoye(a, envoyes, mots(titre))
+    precedents = selection.affaire(a, envoyes, mots(titre))
+    precedent = precedents[-1] if precedents else None
     d = a.get("doublon_de")  # l'IA reconnaît aussi une alerte déjà envoyée (confirmé par des mots communs)
     if not precedent and isinstance(d, int) and 0 <= d < len(deja) and len(signature(ev) & signature(deja[d])) >= 2:
-        precedent = {"id": deja[d]["id"], "titre": (deja[d].get("analyse") or {}).get("titre") or deja[d]["articles"][0]["titre"]}
+        precedent = {"id": deja[d]["id"], "ts": deja[d].get("maj", 0),
+                     "titre": (deja[d].get("analyse") or {}).get("titre") or deja[d]["articles"][0]["titre"]}
+        precedents = [precedent]
+    # 08/11 : un « rebondissement » ne compte que si la dernière alerte de l'affaire a plus de 6 h et une seule fois
+    rebond = bool(a.get("rebondissement_majeur")) and selection.rebond_autorise(precedents)
     score, detail = selection.score100(ev, nb_medias, nb_tiktok, recents, age_h, a, deja_couvert=bool(precedent))
     fiab = selection.fiabilite(ev, a, nb_medias)
     nuit = HEURE_PARIS().hour < 7
@@ -422,7 +432,8 @@ def decider(ev, etat, deja=()):
     # verrou anti-doublon AVANT l'envoi : une 2e fiche de la même affaire dans ce tour sera reconnue
     pers, lieux = selection.entites(a)
     envoyes.append({"id": ev["id"], "ts": maintenant(), "titre": titre, "cle": selection.cle_affaire(a),
-                    "personnes": sorted(pers), "lieux": sorted(lieux), "mots": sorted(mots(titre)), "couleur": c})
+                    "personnes": sorted(pers), "lieux": sorted(lieux), "mots": sorted(mots(titre)), "couleur": c,
+                    "rebond": bool(precedent)})
     del envoyes[:-300]
     ev["notifie"] = True
     alerter(ev)
@@ -430,7 +441,8 @@ def decider(ev, etat, deja=()):
 
 
 def traiter_alertes(etat, touches, premier_tour):
-    candidats = sorted((etat["evenements"][e] for e in touches), key=lambda ev: -ev["score"])
+    # 08/11 : d'abord ce qui s'emballe MAINTENANT (médias depuis 3 h), puis le score mots-clés : les infos chaudes passent en premier
+    candidats = sorted((etat["evenements"][e] for e in touches), key=lambda ev: (-medias_recents(ev), -ev["score"]))
     candidats = [ev for ev in candidats if doit_analyser(ev)]
     if premier_tour:
         candidats = candidats[:3]  # pas d'avalanche au démarrage

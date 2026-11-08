@@ -58,6 +58,7 @@ class TestSelection(Base):
         a = dict(titre="Meurtre à Lille", personnes=["Jean Dupont"], lieux=["Lille"])
         ev1 = evenement("e5", analyse(**a), [article("Meurtre à Lille", m, 2) for m in MEDIAS])
         self.assertTrue(V.decider(ev1, self.etat))
+        self.etat["envoyes"][-1]["ts"] -= 7 * 3600  # la 1re alerte date de 7 h (rebond autorisé après 6 h)
         ev2 = evenement("e6", analyse(**dict(a, titre="Meurtre à Lille : le suspect arrêté", rebondissement_majeur=True,
                                              nouveaute="Le suspect a été interpellé ce soir.")), [article("Suspect arrêté à Lille", m, 0.5) for m in MEDIAS])
         self.assertTrue(V.decider(ev2, self.etat))
@@ -122,6 +123,35 @@ class TestSelection(Base):
         evs = [evenement(f"e2{i}", dict(a), [article("Explosion à Marseille La Joliette", m, 1) for m in MEDIAS]) for i in range(2)]
         self.assertEqual([V.decider(ev, self.etat) for ev in evs], [True, False])
         self.assertEqual(len(self.envois), 1)
+
+    # ---- cas réels signalés le 08/11 ----
+    def test_21_info_de_14h_jamais_envoyee_en_retard(self):  # Ronaldo : sortie à 11 h 28, alerte reçue 14 h après
+        ev = evenement("e40", analyse(titre="Cristiano Ronaldo prend sa retraite internationale", categorie="people",
+                                       personnes=["Cristiano Ronaldo"], lieux=["Portugal"]), [article("Ronaldo prend sa retraite", m, 14) for m in MEDIAS])
+        self.assertFalse(V.decider(ev, self.etat))
+
+    def test_22_info_qui_s_emballe_analysee_meme_sans_mot_cle(self):
+        ev = evenement("e41", analyse(), [article("Cristiano Ronaldo annonce la fin", m, 0.5) for m in MEDIAS[:3]])
+        ev.update(analyses=0, score=0, nb_sources=3)
+        self.assertTrue(V.doit_analyser(ev))
+
+    def test_23_pas_trois_alertes_sur_le_meme_accident(self):  # car scolaire dans l'Ain : 09 h 48, 14 h 57, puis 2 jours après
+        a = dict(titre="Accident de car scolaire dans l'Ain", personnes=["Philippe Tabarot"], lieux=["Bourg-en-Bresse", "Ain"])
+        self.assertTrue(V.decider(evenement("e42", analyse(**a), [article("Car scolaire Ain", m, 1) for m in MEDIAS]), self.etat))
+        rebond = dict(a, titre="Accident mortel de car dans l'Ain", rebondissement_majeur=True)
+        self.assertFalse(V.decider(evenement("e43", analyse(**rebond), [article("Car Ain mortel", m, 0.5) for m in MEDIAS]), self.etat))  # < 6 h
+        self.etat["envoyes"][-1]["ts"] -= 7 * 3600
+        self.assertTrue(V.decider(evenement("e44", analyse(**dict(rebond, titre="Ain : le chauffeur du car mis en examen")),
+                                            [article("Chauffeur mis en examen", m, 0.5) for m in MEDIAS]), self.etat))  # vrai rebond
+        self.etat["envoyes"][-1]["ts"] -= 7 * 3600
+        self.assertFalse(V.decider(evenement("e45", analyse(**dict(rebond, titre="Car de l'Ain : nouvelle audition")),
+                                             [article("Car Ain audition", m, 0.5) for m in MEDIAS]), self.etat))  # 2e rebond : non
+
+    def test_24_doublon_sans_nom_ni_lieu(self):  # « Cyberattaque EFS » n'avait ni personne ni lieu
+        a = analyse(titre="Cyberattaque sur les chambres froides de l'EFS")
+        self.assertTrue(V.decider(evenement("e46", a, [article(a["titre"], m, 1) for m in MEDIAS]), self.etat))
+        b = analyse(titre="EFS : une cyberattaque vise les chambres froides du sang")
+        self.assertFalse(V.decider(evenement("e47", b, [article(b["titre"], m, 1) for m in MEDIAS]), self.etat))
 
     def test_20_aucun_secret_dans_les_messages(self):
         ev = evenement("e30", analyse(titre="Test"), [article("Test", m, 1) for m in MEDIAS])

@@ -18,7 +18,9 @@ POIDS = {
 }
 SEUIL_VERT = 72          # en dessous : aucune notification
 SEUIL_VERT_NUIT = 85     # de 0 h à 7 h (Paris) : seuls les sujets très forts et le rouge passent
-AGE_MAX_SANS_REBOND = 24  # heures : au-delà, une affaire n'est renvoyée que s'il y a un rebondissement majeur
+AGE_MAX_SANS_REBOND = 8   # heures (08/11, avant 24) : une info sortie il y a plus de 8 h n'est plus envoyée, sauf rebondissement majeur
+ECART_REBOND = 6         # heures minimum entre deux alertes sur la même affaire (même si l'IA voit un rebondissement)
+MAX_REBONDS = 1          # rebondissements envoyés au maximum par affaire (sur FENETRE_DOUBLON)
 FENETRE_DOUBLON = 72     # heures : on compare avec les alertes envoyées pendant cette durée
 
 CATEGORIES = {"fait divers": "🚓 Fait divers", "polemique": "💥 Polémique", "people": "⭐ People",
@@ -41,7 +43,7 @@ def score100(ev, nb_medias, nb_tiktok, recents, age_h, a, deja_couvert=False):
     """Score éditorial sur 100 + détail par critère (pour l'expliquer et le tester)."""
     rebond = bool(a.get("rebondissement_majeur"))
     d = {
-        "fraicheur": 1.0 if age_h <= 3 else 0.75 if age_h <= 8 else 0.45 if age_h <= 16 else 0.2 if age_h <= AGE_MAX_SANS_REBOND else 0.0,
+        "fraicheur": 1.0 if age_h <= 2 else 0.75 if age_h <= 4 else 0.45 if age_h <= 6 else 0.2 if age_h <= AGE_MAX_SANS_REBOND else 0.0,
         "narratif": sous_score(a, "narratif"),
         "interet": sous_score(a, "interet_public"),
         "reactions": borne((nb_medias + 1.5 * nb_tiktok) / 12),
@@ -95,7 +97,9 @@ def entites(a):
     """Personnes et lieux nommés par l'IA, normalisés (« Maëva Ghennam » → {maeva, ghennam})."""
     pers = {w for p in (a.get("personnes") or []) for w in norm(p) if len(w) >= 3}
     lieux = {w for p in (a.get("lieux") or []) + ([a["lieu"]] if a.get("lieu") else []) for w in norm(p) if len(w) >= 3}
-    lieux -= {"france", "paris", "europe"}  # trop larges pour identifier une affaire
+    lieux -= {"france", "paris", "europe", "est", "ouest", "nord", "sud", "grand", "haute", "haut", "bas", "basse", "cote", "saint",
+              "sainte", "sur", "les", "lycee", "college", "ecole", "rue", "avenue", "rhone", "alpes", "provence", "azur", "loire",
+              "etats", "unis", "royaume", "uni", "ile", "region", "departement"}  # trop larges pour identifier une affaire
     return pers, lieux
 
 
@@ -103,6 +107,12 @@ def cle_affaire(a):
     """Clé stable d'une affaire : personnes + lieux triés (indépendante de la formulation du titre)."""
     pers, lieux = entites(a)
     return "|".join(sorted(pers)) + "@" + "|".join(sorted(lieux))
+
+
+MOTS_GENERIQUES = {"janvier", "fevrier", "mars", "avril", "mai", "juin", "juillet", "aout", "septembre", "octobre", "novembre",
+                   "decembre", "proces", "proce", "ouverture", "manifestations", "manifestation", "violences", "enquete", "ouverte", "mort",
+                   "morts", "mortel", "mortelle", "blesse", "blesses", "accuse", "plainte", "ministre", "interieur", "police",
+                   "policiers", "gendarmes", "victime", "victimes", "drame", "affaire", "nouvelle", "france", "francais"}
 
 
 def meme_affaire(a, envoye, mots_titre=set(), mots_envoye=set()):
@@ -113,9 +123,30 @@ def meme_affaire(a, envoye, mots_titre=set(), mots_envoye=set()):
     if cle_affaire(a) == envoye.get("cle") and (pers or lieux):
         return True
     cp, cl = pers & p2, lieux & l2
-    if len(cp) >= 2 or (cp and cl):
+    commun = (mots_titre & mots_envoye) - MOTS_GENERIQUES
+    # une personnalité seule ne suffit pas (un ministre est dans plein d'affaires différentes) : il faut aussi un lieu ou un mot du titre
+    if cp and (cl or len(commun - cp) >= 1):
         return True
-    return bool(cl) and len(mots_titre & mots_envoye) >= 3
+    if bool(cl) and len(commun) >= 2:
+        return True
+    # sans personne ni lieu reconnus (ex. « Cyberattaque EFS ») : les titres eux-mêmes
+    return len(commun) >= 3 or len({w for w in commun if len(w) >= 7}) >= 2
+
+
+def affaire(a, envoyes, mots_titre=set(), maintenant=None):
+    """Toutes les alertes déjà envoyées sur la même affaire (fenêtre FENETRE_DOUBLON), de la plus ancienne à la plus récente."""
+    lim = (maintenant or time.time()) - FENETRE_DOUBLON * 3600
+    return [e for e in envoyes if e.get("ts", 0) >= lim and meme_affaire(a, e, mots_titre, set(e.get("mots", [])))]
+
+
+def rebond_autorise(precedents, maintenant=None):
+    """Un rebondissement ne repart que si la dernière alerte date d'au moins ECART_REBOND heures
+    et qu'on n'a pas déjà envoyé MAX_REBONDS rebondissements sur cette affaire."""
+    if not precedents:
+        return True
+    now = maintenant or time.time()
+    return (now - precedents[-1]["ts"] >= ECART_REBOND * 3600
+            and sum(1 for e in precedents if e.get("rebond")) < MAX_REBONDS)
 
 
 def deja_envoye(a, envoyes, mots_titre=set(), maintenant=None):
