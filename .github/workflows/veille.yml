@@ -2,7 +2,7 @@ name: Veille laffaire_france
 
 on:
   schedule:
-    - cron: "*/30 * * * *"   # toutes les 30 min (dépôt privé : quota gratuit de 2000 min/mois) (GitHub peut retarder de quelques minutes)
+    - cron: "*/5 * * * *"   # toutes les 5 min (dépôt public depuis le 08/11 : minutes illimitées)
   workflow_dispatch:          # bouton « Run workflow » pour lancer à la main
 
 concurrency:
