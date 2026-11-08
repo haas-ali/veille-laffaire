@@ -56,7 +56,15 @@ def texte_dernier(ev):
              f"📈 Intérêt médiatique : {e(ev.get('interet') or 'inconnu')}\n"
              f"✅ Fiabilité : {e(S.FIABILITE.get(ev.get('fiab'), 'En cours de vérification'))}")
     t.append(f"\n<b>CE QUI S'EST PASSÉ</b>\n{e(a.get('resume') or titre)}")
-    if a.get("pourquoi"):
+    if a.get("verdict") or a.get("pour"):
+        ic = {"VA PERCER": "🚀", "PEUT PERCER": "🤔", "NE VA PAS PERCER": "🧊"}.get(a.get("verdict"), "🤔")
+        v = [f"\n<b>VERDICT : {ic} {e(a.get('verdict') or 'PEUT PERCER')}</b>"]
+        v += [f"➕ {e(x)}" for x in (a.get("pour") or [])[:3]]
+        v += [f"➖ {e(x)}" for x in (a.get("contre") or [])[:3]]
+        if a.get("images_dispo"):
+            v.append(f"🎬 Images : {e(a['images_dispo'])}")
+        t.append("\n".join(v))
+    elif a.get("pourquoi"):
         t.append(f"\n<b>POURQUOI ÇA PEUT MARCHER</b>\n{e(a['pourquoi'])}")
     t.append(f"\n<b>NOUVEAUTÉ</b>\n{e(a.get('nouveaute') or a.get('nouveau') or 'première alerte sur ce sujet')}")
     vus, lignes = set(), []
@@ -66,7 +74,25 @@ def texte_dernier(ev):
     for v in (ev.get("videos_yt") or [])[:1]:
         lignes.append(f'• 🎥 <a href="{e(v["lien"])}">{e(v["chaine"])}</a>')
     t.append("\n<b>SOURCES</b>\n" + "\n".join(lignes))
+    t.append(liens_ressources(a, titre))
     return assembler(t)
+
+
+def liens_ressources(a, titre):
+    """Liens de recherche directe (vidéos + ressources), un appui depuis le téléphone."""
+    from urllib.parse import quote
+    req = [r for r in (a.get("recherche_video") or []) if r][:2] or [titre]
+    q, q2 = quote(req[0]), quote(req[-1])
+    tag = "".join(w for w in req[0].title().split() if w.isalnum())
+    liens = [("TikTok", f"https://www.tiktok.com/search/video?q={q}"),
+             ("X (direct)", f"https://x.com/search?q={q2}&f=live"),
+             ("YouTube (récent)", f"https://www.youtube.com/results?search_query={q}&sp=CAI%253D"),
+             ("Instagram", f"https://www.instagram.com/explore/tags/{quote(tag.lower())}/"),
+             ("Google Actu", f"https://news.google.com/search?q={q}&hl=fr&gl=FR&ceid=FR:fr"),
+             ("Google Images", f"https://www.google.com/search?q={q}&tbm=isch"),
+             ("Reddit", f"https://www.reddit.com/search/?q={q2}&sort=new"),
+             ("Pixabay (plans libres)", f"https://pixabay.com/videos/search/{quote(req[0].split()[0]) if req[0].split() else q}/")]
+    return "\n<b>🎥 VIDÉOS ET RESSOURCES</b>\n" + " · ".join(f'<a href="{e(u)}">{n}</a>' for n, u in liens)
 
 
 def contexte(titre, lien, extra=""):

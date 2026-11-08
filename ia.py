@@ -109,7 +109,11 @@ Réponds avec ce JSON :
 "rebondissement_majeur": true si les articles récents apportent un fait nouveau MAJEUR (arrestation, aveu, preuve, réponse officielle, décision de justice), sinon false,
 "pourquoi": "1 phrase : pourquoi ça peut marcher sur TikTok", "nouveaute": "1 phrase : pourquoi alerter MAINTENANT",
 "faits_confirmes": ["..."], "incertain": ["..."], "score_tiktok": 0-10, "raison_score": "1 phrase",
-"angle": "angle de vidéo pour L'Affaire en 1-2 phrases", "accroche": "1re phrase de la voix off", "recherche_video": ["2 ou 3 requêtes pour trouver la vidéo originale sur TikTok/X/YouTube"]}}
+"angle": "angle de vidéo pour L'Affaire en 1-2 phrases", "accroche": "1re phrase de la voix off", "recherche_video": ["2 ou 3 requêtes COURTES (2-4 mots, noms propres) pour trouver la vidéo originale sur TikTok/X/YouTube ; la 1re en français, une dans la langue du pays si c'est à l'étranger"],
+"verdict": "VA PERCER" | "PEUT PERCER" | "NE VA PAS PERCER" (sur TikTok en France, honnête, sans gonfler),
+"pour": ["2 ou 3 raisons concrètes qui font que ça peut faire des vues (émotion, choc, personnalité connue, vidéo choc qui circule, débat…)"],
+"contre": ["1 à 3 risques concrets (déjà vu partout, pas d'images, trop compliqué, sujet lointain, info pas confirmée…)"],
+"images_dispo": "1 phrase : quelles vraies images existent probablement (vidéo amateur, caméra de surveillance, conférence de presse, photos…) ou 'aucune image connue'"}}
 Barème score_tiktok : 9-10 = choc national avec vidéo virale ; 7-8 = fort potentiel en France ; 5-6 = intéressant ; 0-4 = peu adapté (économie, sport ordinaire, international lointain)."""
     res, _ = appeler(prompt, modeles=RAPIDES)
     return res
